@@ -21,6 +21,8 @@ class LetterFactory extends Factory
             'company_id' => Company::factory(),
             'subject' => fake()->sentence(4),
             'body' => fake()->paragraphs(3, true),
+            'email_subject' => fake()->sentence(5),
+            'email_body' => fake()->paragraphs(2, true),
             'status' => LetterStatus::Draft,
             'generated_at' => now(),
             'sent_at' => null,

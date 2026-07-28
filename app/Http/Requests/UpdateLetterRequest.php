@@ -17,6 +17,8 @@ class UpdateLetterRequest extends FormRequest
         return [
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
+            'email_subject' => ['required', 'string', 'max:255'],
+            'email_body' => ['required', 'string'],
             'status' => ['required', Rule::enum(LetterStatus::class)],
         ];
     }

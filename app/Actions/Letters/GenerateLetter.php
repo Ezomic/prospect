@@ -13,6 +13,8 @@ class GenerateLetter
         return $company->letters()->create([
             'subject' => $this->subject($company),
             'body' => $this->body($company),
+            'email_subject' => $this->emailSubject(),
+            'email_body' => $this->emailBody($company),
             'status' => LetterStatus::Draft,
             'generated_at' => now(),
         ]);
@@ -25,9 +27,7 @@ class GenerateLetter
 
     private function body(Company $company): string
     {
-        $greeting = $company->contact_name !== null
-            ? "Beste {$company->contact_name}"
-            : 'Geachte heer, mevrouw';
+        $greeting = $this->greeting($company);
 
         $opening = $company->city !== null
             ? "{$company->name} in {$company->city} viel mij op"
@@ -51,5 +51,35 @@ class GenerateLetter
         Robbin Thijssen
         Thijssen Software
         LETTER;
+    }
+
+    private function emailSubject(): string
+    {
+        return 'Open sollicitatie - Robbin Thijssen (Thijssen Software)';
+    }
+
+    private function emailBody(Company $company): string
+    {
+        $greeting = $this->greeting($company);
+
+        return <<<EMAIL
+        {$greeting},
+
+        Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar, samen met mijn cv. In de brief licht ik toe wat ik voor {$company->name} kan betekenen.
+
+        Ik hoor graag of er mogelijkheden zijn om kennis te maken.
+
+        Met vriendelijke groet,
+
+        Robbin Thijssen
+        Thijssen Software
+        EMAIL;
+    }
+
+    private function greeting(Company $company): string
+    {
+        return $company->contact_name !== null
+            ? "Beste {$company->contact_name}"
+            : 'Geachte heer, mevrouw';
     }
 }

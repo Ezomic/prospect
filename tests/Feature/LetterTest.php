@@ -29,7 +29,10 @@ it('generates a draft letter for a company from a template', function () {
         ->and($letter->subject)->toContain('Acme BV')
         ->and($letter->body)->toContain('Jane Doe')
         ->and($letter->body)->toContain('Amsterdam')
-        ->and($letter->body)->toContain('Software');
+        ->and($letter->body)->toContain('Software')
+        ->and($letter->email_subject)->not->toBeNull()
+        ->and($letter->email_body)->toContain('Jane Doe')
+        ->and($letter->email_body)->toContain('Acme BV');
 });
 
 it('falls back gracefully when company fields are missing', function () {
@@ -84,11 +87,14 @@ it('updates a letter', function () {
     $this->put(route('letters.update', $letter), [
         'subject' => 'Nieuwe onderwerpregel',
         'body' => 'Aangepaste inhoud van de brief.',
+        'email_subject' => 'Nieuw e-mailonderwerp',
+        'email_body' => 'Aangepaste begeleidende e-mail.',
         'status' => 'ready',
     ])->assertRedirect(route('companies.show', $letter->company_id));
 
     expect($letter->fresh())
         ->subject->toBe('Nieuwe onderwerpregel')
+        ->email_subject->toBe('Nieuw e-mailonderwerp')
         ->status->toBe(LetterStatus::Ready);
 });
 

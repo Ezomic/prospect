@@ -51,6 +51,8 @@ defineOptions({
 const form = useForm({
     subject: props.letter.subject,
     body: props.letter.body,
+    email_subject: props.letter.email_subject,
+    email_body: props.letter.email_body,
     status: props.letter.status as LetterStatus,
 });
 
@@ -133,7 +135,7 @@ const confirmDelete = () => {
             </div>
 
             <div class="grid gap-2">
-                <Label for="body">Body</Label>
+                <Label for="body">Letter body</Label>
                 <Textarea
                     id="body"
                     v-model="form.body"
@@ -141,6 +143,34 @@ const confirmDelete = () => {
                     required
                 />
                 <InputError :message="form.errors.body" />
+            </div>
+
+            <div class="border-t pt-6">
+                <h2 class="text-sm font-medium">Cover email</h2>
+                <p class="text-sm text-muted-foreground">
+                    Sent with the letter and CV attached.
+                </p>
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="email_subject">Email subject</Label>
+                <Input
+                    id="email_subject"
+                    v-model="form.email_subject"
+                    required
+                />
+                <InputError :message="form.errors.email_subject" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="email_body">Email body</Label>
+                <Textarea
+                    id="email_body"
+                    v-model="form.email_body"
+                    class="min-h-[220px] text-sm"
+                    required
+                />
+                <InputError :message="form.errors.email_body" />
             </div>
 
             <div class="flex items-center gap-3">

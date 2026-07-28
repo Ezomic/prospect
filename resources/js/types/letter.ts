@@ -18,5 +18,7 @@ export type LetterSummary = {
 
 export type Letter = LetterSummary & {
     body: string;
+    email_subject: string;
+    email_body: string;
     company?: Company;
 };

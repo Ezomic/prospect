@@ -13,6 +13,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('companies', CompanyController::class);
 
     Route::post('companies/{company}/letters', [LetterController::class, 'store'])->name('letters.store');
+    Route::post('letters/{letter}/send', [LetterController::class, 'send'])->name('letters.send');
     Route::get('letters/{letter}/pdf', [LetterController::class, 'pdf'])->name('letters.pdf');
     Route::resource('letters', LetterController::class)->only(['edit', 'update', 'destroy']);
 });

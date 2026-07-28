@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    // IMAP for the outreach sender (info@thijssensoftware.nl), used to append
+    // sent messages to the Sent folder. Optional: when the host is unset the
+    // append is skipped and the send still succeeds.
+    'outreach_imap' => [
+        'host' => env('OUTREACH_IMAP_HOST'),
+        'port' => (int) env('OUTREACH_IMAP_PORT', 993),
+        'encryption' => env('OUTREACH_IMAP_ENCRYPTION', 'ssl'),
+        'username' => env('OUTREACH_IMAP_USERNAME'),
+        'password' => env('OUTREACH_IMAP_PASSWORD'),
+    ],
+
 ];

@@ -7,10 +7,13 @@ use App\Enums\LetterStatus;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Models\Company;
 use App\Models\Letter;
+use App\Services\Mail\LetterSender;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LetterController extends Controller
@@ -39,6 +42,23 @@ class LetterController extends Controller
         $letter->update($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter saved.')]);
+
+        return to_route('companies.show', $letter->company_id);
+    }
+
+    public function send(Request $request, Letter $letter, LetterSender $sender): RedirectResponse
+    {
+        $letter->load('company');
+
+        try {
+            $sender->send($letter, $request->user());
+        } catch (RuntimeException $e) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter sent.')]);
 
         return to_route('companies.show', $letter->company_id);
     }

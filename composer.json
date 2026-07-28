@@ -17,6 +17,7 @@
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
+        "thijssensoftware/id-client": "^0.1.0",
         "webklex/laravel-imap": "^6.2"
     },
     "require-dev": {
@@ -116,5 +117,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [{
+        "name": "id-client",
+        "type": "vcs",
+        "url": "https://github.com/Ezomic/id-client.git"
+    }]
 }

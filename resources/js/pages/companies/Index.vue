@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import { Building2 } from '@lucide/vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { Building2, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeVariants } from '@/components/ui/badge';
-import { index as companiesIndex } from '@/routes/companies';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    create,
+    destroy,
+    edit,
+    index as companiesIndex,
+} from '@/routes/companies';
 import type { Company, CompanyStatus } from '@/types';
 
 defineProps<{
@@ -40,26 +56,62 @@ const statusLabels: Record<CompanyStatus, string> = {
 
 const websiteUrl = (website: string) =>
     /^https?:\/\//.test(website) ? website : `https://${website}`;
+
+const deleteOpen = ref(false);
+const deleting = ref(false);
+const selected = ref<Company | null>(null);
+
+const askDelete = (company: Company) => {
+    selected.value = company;
+    deleteOpen.value = true;
+};
+
+const confirmDelete = () => {
+    if (!selected.value) {
+        return;
+    }
+
+    router.delete(destroy(selected.value.id).url, {
+        preserveScroll: true,
+        onStart: () => (deleting.value = true),
+        onFinish: () => (deleting.value = false),
+        onSuccess: () => (deleteOpen.value = false),
+    });
+};
 </script>
 
 <template>
     <Head title="Companies" />
 
     <div class="flex h-full flex-1 flex-col gap-6 p-4">
-        <Heading
-            title="Companies"
-            description="Companies to pitch and track through the outreach pipeline."
-        />
+        <div class="flex items-start justify-between gap-4">
+            <Heading
+                title="Companies"
+                description="Companies to pitch and track through the outreach pipeline."
+            />
+            <Button as-child>
+                <Link :href="create()">
+                    <Plus />
+                    Add company
+                </Link>
+            </Button>
+        </div>
 
         <div
             v-if="companies.length === 0"
-            class="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
+            class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
         >
             <Building2 class="size-8 text-muted-foreground" />
             <p class="text-sm font-medium">No companies yet</p>
             <p class="text-sm text-muted-foreground">
-                Companies you add to your outreach list will appear here.
+                Add your first company to start tracking outreach.
             </p>
+            <Button as-child class="mt-2">
+                <Link :href="create()">
+                    <Plus />
+                    Add company
+                </Link>
+            </Button>
         </div>
 
         <div
@@ -78,6 +130,9 @@ const websiteUrl = (website: string) =>
                         <th class="px-4 py-3 font-medium">KvK</th>
                         <th class="px-4 py-3 font-medium">Status</th>
                         <th class="px-4 py-3 font-medium">Website</th>
+                        <th class="px-4 py-3 text-right font-medium">
+                            Actions
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,7 +142,12 @@ const websiteUrl = (website: string) =>
                         class="border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border"
                     >
                         <td class="px-4 py-3 font-medium">
-                            {{ company.name }}
+                            <Link
+                                :href="edit(company.id)"
+                                class="hover:underline"
+                            >
+                                {{ company.name }}
+                            </Link>
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ company.contact_name ?? '-' }}
@@ -118,9 +178,54 @@ const websiteUrl = (website: string) =>
                             </a>
                             <span v-else class="text-muted-foreground">-</span>
                         </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" as-child>
+                                    <Link
+                                        :href="edit(company.id)"
+                                        :aria-label="`Edit ${company.name}`"
+                                    >
+                                        <Pencil />
+                                    </Link>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="text-destructive hover:text-destructive"
+                                    :aria-label="`Delete ${company.name}`"
+                                    @click="askDelete(company)"
+                                >
+                                    <Trash2 />
+                                </Button>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <Dialog v-model:open="deleteOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Delete company?</DialogTitle>
+                <DialogDescription>
+                    This permanently removes {{ selected?.name }} from your
+                    outreach list. This cannot be undone.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                    <Button variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button
+                    variant="destructive"
+                    :disabled="deleting"
+                    @click="confirmDelete"
+                >
+                    Delete
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>

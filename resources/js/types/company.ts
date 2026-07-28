@@ -16,4 +16,7 @@ export type Company = {
     industry: string | null;
     status: CompanyStatus;
     notes: string | null;
+    replied_at: string | null;
+    bounced_at: string | null;
+    follow_up_at: string | null;
 };

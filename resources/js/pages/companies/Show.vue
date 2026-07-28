@@ -15,10 +15,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { destroy, edit, index } from '@/routes/companies';
+import { Label } from '@/components/ui/label';
+import {
+    destroy,
+    edit,
+    followUp as scheduleFollowUp,
+    index,
+    status as updateStatus,
+} from '@/routes/companies';
 import { store as generateLetterRoute } from '@/routes/letters';
 import { edit as editLetter } from '@/routes/letters';
-import type { Company, LetterSummary } from '@/types';
+import type { Company, CompanyStatus, LetterSummary } from '@/types';
 
 const props = defineProps<{
     company: Company;
@@ -76,6 +83,29 @@ const generateLetter = () => {
 
 const formatDate = (value: string | null) =>
     value ? new Date(value).toLocaleDateString() : '-';
+
+const setStatus = (status: CompanyStatus) => {
+    router.patch(
+        updateStatus(props.company.id).url,
+        { status },
+        { preserveScroll: true },
+    );
+};
+
+const followUpDate = ref(props.company.follow_up_at?.slice(0, 10) ?? '');
+
+const saveFollowUp = () => {
+    router.patch(
+        scheduleFollowUp(props.company.id).url,
+        { follow_up_at: followUpDate.value || null },
+        { preserveScroll: true },
+    );
+};
+
+const clearFollowUp = () => {
+    followUpDate.value = '';
+    saveFollowUp();
+};
 </script>
 
 <template>
@@ -141,6 +171,78 @@ const formatDate = (value: string | null) =>
                         </dd>
                     </div>
                 </dl>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardContent class="flex flex-col gap-4">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-sm text-muted-foreground">Pipeline</h2>
+                    <CompanyStatusBadge :status="company.status" />
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="setStatus('replied')"
+                    >
+                        Mark replied
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="setStatus('bounced')"
+                    >
+                        Mark bounced
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="setStatus('closed')"
+                    >
+                        Mark closed
+                    </Button>
+                </div>
+
+                <dl
+                    v-if="company.replied_at || company.bounced_at"
+                    class="grid gap-2 text-sm sm:grid-cols-2"
+                >
+                    <div v-if="company.replied_at" class="grid gap-1">
+                        <dt class="text-muted-foreground">Replied</dt>
+                        <dd class="font-medium">
+                            {{ formatDate(company.replied_at) }}
+                        </dd>
+                    </div>
+                    <div v-if="company.bounced_at" class="grid gap-1">
+                        <dt class="text-muted-foreground">Bounced</dt>
+                        <dd class="font-medium">
+                            {{ formatDate(company.bounced_at) }}
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="flex flex-col gap-2 border-t pt-4">
+                    <Label for="follow_up">Follow-up reminder</Label>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input
+                            id="follow_up"
+                            v-model="followUpDate"
+                            type="date"
+                            class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        />
+                        <Button size="sm" @click="saveFollowUp">Save</Button>
+                        <Button
+                            v-if="company.follow_up_at"
+                            size="sm"
+                            variant="ghost"
+                            @click="clearFollowUp"
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </div>
             </CardContent>
         </Card>
 

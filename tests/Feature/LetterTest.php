@@ -65,6 +65,17 @@ it('renders the letter edit page', function () {
         );
 });
 
+it('renders a letter as a pdf', function () {
+    $this->actingAs(User::factory()->create());
+
+    $letter = Letter::factory()->create();
+
+    $response = $this->get(route('letters.pdf', $letter));
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf');
+});
+
 it('updates a letter', function () {
     $this->actingAs(User::factory()->create());
 

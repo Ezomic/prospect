@@ -22,6 +22,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $industry
  * @property CompanyStatus $status
  * @property string|null $notes
+ * @property Carbon|null $replied_at
+ * @property Carbon|null $bounced_at
+ * @property Carbon|null $follow_up_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Letter> $letters
@@ -39,6 +42,9 @@ class Company extends Model
     {
         return [
             'status' => CompanyStatus::class,
+            'replied_at' => 'datetime',
+            'bounced_at' => 'datetime',
+            'follow_up_at' => 'date',
         ];
     }
 

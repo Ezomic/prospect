@@ -15,6 +15,11 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'total' => Company::count(),
             'stats' => $this->statusCounts(),
+            'followUpsDue' => Company::query()
+                ->whereNotNull('follow_up_at')
+                ->whereDate('follow_up_at', '<=', today())
+                ->where('status', '!=', CompanyStatus::Closed)
+                ->count(),
         ]);
     }
 

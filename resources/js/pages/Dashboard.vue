@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { Building2 } from '@lucide/vue';
+import { BellRing, Building2 } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Card } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -10,6 +10,7 @@ import type { CompanyStatus } from '@/types';
 defineProps<{
     total: number;
     stats: { value: CompanyStatus; label: string; count: number }[];
+    followUpsDue: number;
 }>();
 
 defineOptions({
@@ -40,6 +41,27 @@ const dotColors: Record<CompanyStatus, string> = {
             title="Dashboard"
             description="Your outreach pipeline at a glance."
         />
+
+        <Card
+            v-if="followUpsDue > 0"
+            class="flex items-center justify-between gap-4 border-amber-500/40 bg-amber-500/5 p-5"
+        >
+            <div class="flex items-center gap-3">
+                <BellRing class="size-5 text-amber-600 dark:text-amber-500" />
+                <div>
+                    <p class="text-sm font-medium">Follow-ups due</p>
+                    <p class="text-sm text-muted-foreground">
+                        {{ followUpsDue }}
+                        {{
+                            followUpsDue === 1
+                                ? 'company needs'
+                                : 'companies need'
+                        }}
+                        a follow-up.
+                    </p>
+                </div>
+            </div>
+        </Card>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link :href="companiesIndex()" class="group">

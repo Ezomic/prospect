@@ -41,6 +41,7 @@ class CompanyController extends Controller
     {
         return Inertia::render('companies/Show', [
             'company' => $company,
+            'letters' => $company->letters()->get(['id', 'company_id', 'subject', 'status', 'generated_at', 'sent_at']),
         ]);
     }
 

@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\CompanyStatus;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read Collection<int, Letter> $letters
  */
 #[Fillable(['name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'notes'])]
 class Company extends Model
@@ -37,5 +40,13 @@ class Company extends Model
         return [
             'status' => CompanyStatus::class,
         ];
+    }
+
+    /**
+     * @return HasMany<Letter, $this>
+     */
+    public function letters(): HasMany
+    {
+        return $this->hasMany(Letter::class)->latest();
     }
 }

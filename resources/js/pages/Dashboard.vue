@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { Building2 } from '@lucide/vue';
+import Heading from '@/components/Heading.vue';
+import { Card } from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import { index as companiesIndex } from '@/routes/companies';
+import type { CompanyStatus } from '@/types';
+
+defineProps<{
+    total: number;
+    stats: { value: CompanyStatus; label: string; count: number }[];
+}>();
 
 defineOptions({
     layout: {
@@ -13,35 +22,65 @@ defineOptions({
         ],
     },
 });
+
+const dotColors: Record<CompanyStatus, string> = {
+    new: 'bg-muted-foreground',
+    sent: 'bg-primary',
+    replied: 'bg-green-500',
+    bounced: 'bg-destructive',
+    closed: 'bg-muted-foreground/50',
+};
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
+    <div class="flex h-full flex-1 flex-col gap-6 p-4">
+        <Heading
+            title="Dashboard"
+            description="Your outreach pipeline at a glance."
+        />
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Link :href="companiesIndex()" class="group">
+                <Card
+                    class="flex h-full flex-col justify-between gap-4 p-5 transition-colors group-hover:border-primary/50"
+                >
+                    <div
+                        class="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                        <Building2 class="size-4" />
+                        All companies
+                    </div>
+                    <p class="text-3xl font-semibold tracking-tight">
+                        {{ total }}
+                    </p>
+                </Card>
+            </Link>
+
+            <Link
+                v-for="stat in stats"
+                :key="stat.value"
+                :href="companiesIndex({ query: { status: stat.value } })"
+                class="group"
             >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-        </div>
-        <div
-            class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-        >
-            <PlaceholderPattern />
+                <Card
+                    class="flex h-full flex-col justify-between gap-4 p-5 transition-colors group-hover:border-primary/50"
+                >
+                    <div
+                        class="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                        <span
+                            class="size-2 rounded-full"
+                            :class="dotColors[stat.value]"
+                        />
+                        {{ stat.label }}
+                    </div>
+                    <p class="text-3xl font-semibold tracking-tight">
+                        {{ stat.count }}
+                    </p>
+                </Card>
+            </Link>
         </div>
     </div>
 </template>

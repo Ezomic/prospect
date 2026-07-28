@@ -21,6 +21,13 @@ class CompanyController extends Controller
         ]);
     }
 
+    public function show(Company $company): Response
+    {
+        return Inertia::render('companies/Show', [
+            'company' => $company,
+        ]);
+    }
+
     public function create(): Response
     {
         return Inertia::render('companies/Create', [

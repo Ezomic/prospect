@@ -2,9 +2,8 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Building2, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { ref } from 'vue';
+import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import Heading from '@/components/Heading.vue';
-import { Badge } from '@/components/ui/badge';
-import type { BadgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -20,8 +19,9 @@ import {
     destroy,
     edit,
     index as companiesIndex,
+    show,
 } from '@/routes/companies';
-import type { Company, CompanyStatus } from '@/types';
+import type { Company } from '@/types';
 
 defineProps<{
     companies: Company[];
@@ -37,22 +37,6 @@ defineOptions({
         ],
     },
 });
-
-const statusVariants: Record<CompanyStatus, BadgeVariants['variant']> = {
-    new: 'secondary',
-    sent: 'default',
-    replied: 'default',
-    bounced: 'destructive',
-    closed: 'outline',
-};
-
-const statusLabels: Record<CompanyStatus, string> = {
-    new: 'New',
-    sent: 'Sent',
-    replied: 'Replied',
-    bounced: 'Bounced',
-    closed: 'Closed',
-};
 
 const websiteUrl = (website: string) =>
     /^https?:\/\//.test(website) ? website : `https://${website}`;
@@ -143,7 +127,7 @@ const confirmDelete = () => {
                     >
                         <td class="px-4 py-3 font-medium">
                             <Link
-                                :href="edit(company.id)"
+                                :href="show(company.id)"
                                 class="hover:underline"
                             >
                                 {{ company.name }}
@@ -162,9 +146,7 @@ const confirmDelete = () => {
                             {{ company.kvk_number ?? '-' }}
                         </td>
                         <td class="px-4 py-3">
-                            <Badge :variant="statusVariants[company.status]">{{
-                                statusLabels[company.status]
-                            }}</Badge>
+                            <CompanyStatusBadge :status="company.status" />
                         </td>
                         <td class="px-4 py-3">
                             <a

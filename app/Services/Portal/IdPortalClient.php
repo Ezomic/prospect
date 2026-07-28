@@ -67,6 +67,8 @@ class IdPortalClient
             }
 
             $response = Http::withToken($token)
+                ->connectTimeout(3)
+                ->timeout(5)
                 ->acceptJson()
                 ->asJson()
                 ->post($this->url('/api/portal/apps'), ['email' => $user->email]);
@@ -92,7 +94,7 @@ class IdPortalClient
             return $cached;
         }
 
-        $response = Http::acceptJson()->asForm()->post($this->url('/oauth/token'), [
+        $response = Http::connectTimeout(3)->timeout(5)->acceptJson()->asForm()->post($this->url('/oauth/token'), [
             'grant_type' => 'client_credentials',
             'client_id' => config('services.thijssensoftware.client_id'),
             'client_secret' => config('services.thijssensoftware.client_secret'),

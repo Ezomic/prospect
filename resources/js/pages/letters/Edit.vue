@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, FileDown, Trash2 } from '@lucide/vue';
-import { ref } from 'vue';
+import { ArrowLeft, FileDown, Send, Trash2 } from '@lucide/vue';
+import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { index as companiesIndex, show } from '@/routes/companies';
-import { destroy, pdf, update } from '@/routes/letters';
+import { destroy, pdf, send, update } from '@/routes/letters';
 import type { Letter, LetterStatus, LetterStatusOption } from '@/types';
 
 const props = defineProps<{
@@ -58,6 +58,23 @@ const form = useForm({
 
 const submit = () => {
     form.put(update(props.letter.id).url, { preserveScroll: true });
+};
+
+const isSent = computed(() => props.letter.sent_at !== null);
+
+const sendOpen = ref(false);
+const sending = ref(false);
+
+const confirmSend = () => {
+    router.post(
+        send(props.letter.id).url,
+        {},
+        {
+            onStart: () => (sending.value = true),
+            onFinish: () => (sending.value = false),
+            onSuccess: () => (sendOpen.value = false),
+        },
+    );
 };
 
 const deleteOpen = ref(false);
@@ -104,6 +121,10 @@ const confirmDelete = () => {
                 >
                     <Trash2 />
                     Delete
+                </Button>
+                <Button :disabled="isSent" @click="sendOpen = true">
+                    <Send />
+                    {{ isSent ? 'Sent' : 'Send' }}
                 </Button>
             </div>
         </div>
@@ -183,6 +204,28 @@ const confirmDelete = () => {
             </div>
         </form>
     </div>
+
+    <Dialog v-model:open="sendOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Send this letter?</DialogTitle>
+                <DialogDescription>
+                    The cover email will be sent to
+                    {{ letter.company?.email ?? 'the company' }} with the letter
+                    and your CV attached. The company moves to Sent.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                    <Button variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button :disabled="sending" @click="confirmSend">
+                    <Send />
+                    Send
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="deleteOpen">
         <DialogContent>

@@ -52,10 +52,20 @@ const websiteUrl = (website: string) =>
 
 const details = [
     { label: 'Contact', value: props.company.contact_name },
+    { label: 'Contact role', value: props.company.contact_role },
     { label: 'Email', value: props.company.email },
     { label: 'City', value: props.company.city },
     { label: 'KvK number', value: props.company.kvk_number },
     { label: 'Industry', value: props.company.industry },
+    {
+        label: 'Lead score',
+        value:
+            props.company.lead_score !== null
+                ? String(props.company.lead_score)
+                : null,
+    },
+    { label: 'Source', value: props.company.source },
+    { label: 'First contact', value: props.company.first_contact_channel },
 ];
 
 const deleteOpen = ref(false);
@@ -120,15 +130,26 @@ const clearFollowUp = () => {
                     </h1>
                     <CompanyStatusBadge :status="company.status" />
                 </div>
-                <a
-                    v-if="company.website"
-                    :href="websiteUrl(company.website)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-sm text-primary underline-offset-4 hover:underline"
-                >
-                    {{ company.website }}
-                </a>
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                    <a
+                        v-if="company.website"
+                        :href="websiteUrl(company.website)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary underline-offset-4 hover:underline"
+                    >
+                        {{ company.website }}
+                    </a>
+                    <a
+                        v-if="company.linkedin_url"
+                        :href="company.linkedin_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary underline-offset-4 hover:underline"
+                    >
+                        LinkedIn
+                    </a>
+                </div>
             </div>
 
             <div class="flex items-center gap-2">

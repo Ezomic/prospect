@@ -30,6 +30,11 @@ const form = useForm({
     industry: props.company?.industry ?? '',
     status: (props.company?.status ?? 'new') as CompanyStatus,
     notes: props.company?.notes ?? '',
+    source: props.company?.source ?? '',
+    contact_role: props.company?.contact_role ?? '',
+    linkedin_url: props.company?.linkedin_url ?? '',
+    lead_score: props.company?.lead_score ?? null,
+    first_contact_channel: props.company?.first_contact_channel ?? '',
 });
 
 const submit = () => {
@@ -135,6 +140,66 @@ const submit = () => {
                     placeholder="Anything worth remembering about this company"
                 />
                 <InputError :message="form.errors.notes" />
+            </div>
+
+            <div class="border-t pt-4 sm:col-span-2">
+                <h2 class="text-sm font-medium">Lead qualification</h2>
+                <p class="text-sm text-muted-foreground">
+                    Where the lead came from and how to prioritise it.
+                </p>
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="source">Source</Label>
+                <Input
+                    id="source"
+                    v-model="form.source"
+                    placeholder="vacancy / directory / referral / ecosystem"
+                />
+                <InputError :message="form.errors.source" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="lead_score">Lead score (0-10)</Label>
+                <Input
+                    id="lead_score"
+                    type="number"
+                    min="0"
+                    max="10"
+                    v-model="form.lead_score"
+                    placeholder="0-10"
+                />
+                <InputError :message="form.errors.lead_score" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="contact_role">Contact role</Label>
+                <Input
+                    id="contact_role"
+                    v-model="form.contact_role"
+                    placeholder="Founder / Lead developer / CTO"
+                />
+                <InputError :message="form.errors.contact_role" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="first_contact_channel">First contact channel</Label>
+                <Input
+                    id="first_contact_channel"
+                    v-model="form.first_contact_channel"
+                    placeholder="email / linkedin / phone"
+                />
+                <InputError :message="form.errors.first_contact_channel" />
+            </div>
+
+            <div class="grid gap-2 sm:col-span-2">
+                <Label for="linkedin_url">LinkedIn URL</Label>
+                <Input
+                    id="linkedin_url"
+                    v-model="form.linkedin_url"
+                    placeholder="https://www.linkedin.com/in/..."
+                />
+                <InputError :message="form.errors.linkedin_url" />
             </div>
         </div>
 

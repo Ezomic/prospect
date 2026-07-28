@@ -16,6 +16,11 @@ export type Company = {
     industry: string | null;
     status: CompanyStatus;
     notes: string | null;
+    source: string | null;
+    contact_role: string | null;
+    linkedin_url: string | null;
+    lead_score: number | null;
+    first_contact_channel: string | null;
     replied_at: string | null;
     bounced_at: string | null;
     follow_up_at: string | null;

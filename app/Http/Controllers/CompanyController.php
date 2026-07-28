@@ -30,7 +30,7 @@ class CompanyController extends Controller
             ))
             ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
             ->orderBy('name')
-            ->get(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status']);
+            ->get(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'source', 'lead_score']);
 
         return Inertia::render('companies/Index', [
             'companies' => $companies,

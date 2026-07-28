@@ -35,6 +35,20 @@ it('lists the companies on the index page', function () {
         );
 });
 
+it('renders the company detail page', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['name' => 'Acme BV']);
+
+    $this->get(route('companies.show', $company))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('companies/Show')
+            ->where('company.id', $company->id)
+            ->where('company.name', 'Acme BV')
+        );
+});
+
 it('creates a company', function () {
     $this->actingAs(User::factory()->create());
 

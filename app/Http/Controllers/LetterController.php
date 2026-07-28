@@ -7,9 +7,11 @@ use App\Enums\LetterStatus;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Models\Company;
 use App\Models\Letter;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LetterController extends Controller
 {
@@ -39,6 +41,15 @@ class LetterController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter saved.')]);
 
         return to_route('companies.show', $letter->company_id);
+    }
+
+    public function pdf(Letter $letter): HttpResponse
+    {
+        $letter->load('company');
+
+        $pdf = Pdf::loadView('pdf.letter', ['letter' => $letter]);
+
+        return $pdf->stream("letter-{$letter->id}.pdf");
     }
 
     public function destroy(Letter $letter): RedirectResponse

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Trash2 } from '@lucide/vue';
+import { ArrowLeft, FileDown, Trash2 } from '@lucide/vue';
 import { ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { index as companiesIndex, show } from '@/routes/companies';
-import { destroy, update } from '@/routes/letters';
+import { destroy, pdf, update } from '@/routes/letters';
 import type { Letter, LetterStatus, LetterStatusOption } from '@/types';
 
 const props = defineProps<{
@@ -84,6 +84,16 @@ const confirmDelete = () => {
                         <ArrowLeft />
                         Back to company
                     </Link>
+                </Button>
+                <Button variant="outline" as-child>
+                    <a
+                        :href="pdf(letter.id).url"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <FileDown />
+                        PDF
+                    </a>
                 </Button>
                 <Button
                     variant="outline"

@@ -3,21 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CompanyStatus;
+use App\Http\Requests\IndexCompanyRequest;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CompanyController extends Controller
 {
-    public function index(): Response
+    public function index(IndexCompanyRequest $request): Response
     {
+        $search = $request->validated('search');
+        $status = $request->validated('status');
+
+        $companies = Company::query()
+            ->when($search, fn (Builder $query, string $search) => $query->where(fn (Builder $query) => $query
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('contact_name', 'like', "%{$search}%")
+                ->orWhere('city', 'like', "%{$search}%")
+                ->orWhere('industry', 'like', "%{$search}%")
+            ))
+            ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->orderBy('name')
+            ->get(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status']);
+
         return Inertia::render('companies/Index', [
-            'companies' => Company::query()
-                ->orderBy('name')
-                ->get(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status']),
+            'companies' => $companies,
+            'filters' => ['search' => $search, 'status' => $status],
+            'statuses' => $this->statusOptions(),
         ]);
     }
 

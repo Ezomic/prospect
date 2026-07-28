@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Building2, Pencil, Plus, Trash2 } from '@lucide/vue';
-import { ref } from 'vue';
+import {
+    Building2,
+    Pencil,
+    Plus,
+    Search,
+    SearchX,
+    Trash2,
+    X,
+} from '@lucide/vue';
+import { watchDebounced } from '@vueuse/core';
+import { computed, ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
@@ -14,6 +23,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     create,
     destroy,
@@ -21,10 +38,12 @@ import {
     index as companiesIndex,
     show,
 } from '@/routes/companies';
-import type { Company } from '@/types';
+import type { Company, CompanyStatus, CompanyStatusOption } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     companies: Company[];
+    filters: { search: string | null; status: CompanyStatus | null };
+    statuses: CompanyStatusOption[];
 }>();
 
 defineOptions({
@@ -37,6 +56,31 @@ defineOptions({
         ],
     },
 });
+
+const search = ref(props.filters.search ?? '');
+const status = ref<CompanyStatus | 'all'>(props.filters.status ?? 'all');
+
+const applyFilters = () => {
+    router.get(
+        companiesIndex().url,
+        {
+            search: search.value || undefined,
+            status: status.value === 'all' ? undefined : status.value,
+        },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+};
+
+watchDebounced([search, status], applyFilters, { debounce: 300 });
+
+const hasActiveFilters = computed(
+    () => search.value !== '' || status.value !== 'all',
+);
+
+const clearFilters = () => {
+    search.value = '';
+    status.value = 'all';
+};
 
 const websiteUrl = (website: string) =>
     /^https?:\/\//.test(website) ? website : `https://${website}`;
@@ -82,7 +126,53 @@ const confirmDelete = () => {
         </div>
 
         <div
-            v-if="companies.length === 0"
+            v-if="companies.length > 0 || hasActiveFilters"
+            class="flex flex-col gap-3 sm:flex-row sm:items-center"
+        >
+            <div class="relative w-full sm:max-w-xs">
+                <Search
+                    class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                    v-model="search"
+                    placeholder="Search companies"
+                    class="pl-9"
+                    aria-label="Search companies"
+                />
+            </div>
+
+            <Select v-model="status">
+                <SelectTrigger
+                    class="w-full sm:w-48"
+                    aria-label="Filter by status"
+                >
+                    <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem
+                        v-for="option in statuses"
+                        :key="option.value"
+                        :value="option.value"
+                    >
+                        {{ option.label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Button
+                v-if="hasActiveFilters"
+                variant="ghost"
+                class="sm:ml-auto"
+                @click="clearFilters"
+            >
+                <X />
+                Clear
+            </Button>
+        </div>
+
+        <div
+            v-if="companies.length === 0 && !hasActiveFilters"
             class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
         >
             <Building2 class="size-8 text-muted-foreground" />
@@ -95,6 +185,21 @@ const confirmDelete = () => {
                     <Plus />
                     Add company
                 </Link>
+            </Button>
+        </div>
+
+        <div
+            v-else-if="companies.length === 0"
+            class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
+        >
+            <SearchX class="size-8 text-muted-foreground" />
+            <p class="text-sm font-medium">No companies match your filters</p>
+            <p class="text-sm text-muted-foreground">
+                Try a different search term or status.
+            </p>
+            <Button variant="outline" class="mt-2" @click="clearFilters">
+                <X />
+                Clear filters
             </Button>
         </div>
 

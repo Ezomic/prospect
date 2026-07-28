@@ -213,6 +213,7 @@ const confirmDelete = () => {
                         class="border-b border-sidebar-border/70 text-left text-muted-foreground dark:border-sidebar-border"
                     >
                         <th class="px-4 py-3 font-medium">Name</th>
+                        <th class="px-4 py-3 font-medium">Score</th>
                         <th class="px-4 py-3 font-medium">Contact</th>
                         <th class="px-4 py-3 font-medium">City</th>
                         <th class="px-4 py-3 font-medium">Industry</th>
@@ -237,6 +238,11 @@ const confirmDelete = () => {
                             >
                                 {{ company.name }}
                             </Link>
+                        </td>
+                        <td
+                            class="px-4 py-3 text-muted-foreground tabular-nums"
+                        >
+                            {{ company.lead_score ?? '-' }}
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ company.contact_name ?? '-' }}

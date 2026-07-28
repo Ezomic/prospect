@@ -99,6 +99,45 @@ it('creates a company', function () {
     ]);
 });
 
+it('stores lead qualification fields', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => 'Studio X',
+        'website' => null,
+        'email' => null,
+        'contact_name' => 'Jane Dev',
+        'city' => null,
+        'kvk_number' => null,
+        'industry' => 'Agency',
+        'status' => 'new',
+        'notes' => null,
+        'source' => 'vacancy',
+        'contact_role' => 'Lead developer',
+        'linkedin_url' => 'https://www.linkedin.com/in/janedev',
+        'lead_score' => 8,
+        'first_contact_channel' => 'linkedin',
+    ])->assertRedirect(route('companies.index'));
+
+    $this->assertDatabaseHas('companies', [
+        'name' => 'Studio X',
+        'source' => 'vacancy',
+        'contact_role' => 'Lead developer',
+        'lead_score' => 8,
+        'first_contact_channel' => 'linkedin',
+    ]);
+});
+
+it('rejects an out-of-range lead score', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => 'Studio X',
+        'status' => 'new',
+        'lead_score' => 42,
+    ])->assertSessionHasErrors('lead_score');
+});
+
 it('validates a company on create', function () {
     $this->actingAs(User::factory()->create());
 

@@ -23,6 +23,11 @@ trait CompanyValidationRules
             'industry' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::enum(CompanyStatus::class)],
             'notes' => ['nullable', 'string'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'contact_role' => ['nullable', 'string', 'max:255'],
+            'linkedin_url' => ['nullable', 'string', 'url', 'max:255'],
+            'lead_score' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'first_contact_channel' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -35,6 +35,34 @@ it('lists the companies on the index page', function () {
         );
 });
 
+it('filters companies by search term', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->create(['name' => 'Acme BV', 'city' => 'Amsterdam']);
+    Company::factory()->create(['name' => 'Globex NV', 'city' => 'Rotterdam']);
+
+    $this->get(route('companies.index', ['search' => 'Amsterdam']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('companies', 1)
+            ->where('companies.0.name', 'Acme BV')
+            ->where('filters.search', 'Amsterdam')
+        );
+});
+
+it('filters companies by status', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->create(['name' => 'Sent Co', 'status' => 'sent']);
+    Company::factory()->create(['name' => 'New Co', 'status' => 'new']);
+
+    $this->get(route('companies.index', ['status' => 'sent']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('companies', 1)
+            ->where('companies.0.name', 'Sent Co')
+            ->where('filters.status', 'sent')
+        );
+});
+
 it('renders the company detail page', function () {
     $this->actingAs(User::factory()->create());
 

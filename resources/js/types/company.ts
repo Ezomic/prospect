@@ -1,5 +1,10 @@
 export type CompanyStatus = 'new' | 'sent' | 'replied' | 'bounced' | 'closed';
 
+export type CompanyStatusOption = {
+    value: CompanyStatus;
+    label: string;
+};
+
 export type Company = {
     id: number;
     name: string;
@@ -10,4 +15,5 @@ export type Company = {
     kvk_number: string | null;
     industry: string | null;
     status: CompanyStatus;
+    notes: string | null;
 };

@@ -8,7 +8,7 @@ Route::inertia('/', 'Welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
 
-    Route::get('companies', [CompanyController::class, 'index'])->name('companies.index');
+    Route::resource('companies', CompanyController::class)->except('show');
 });
 
 require __DIR__.'/settings.php';

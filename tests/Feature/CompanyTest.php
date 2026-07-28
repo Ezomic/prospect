@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CompanyStatus;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,4 +33,71 @@ it('lists the companies on the index page', function () {
             ->where('companies.0.name', 'Acme BV')
             ->where('companies.1.name', 'Globex NV')
         );
+});
+
+it('creates a company', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => 'Acme BV',
+        'website' => 'acme.example',
+        'email' => 'info@acme.example',
+        'contact_name' => 'Jane Doe',
+        'city' => 'Amsterdam',
+        'kvk_number' => '12345678',
+        'industry' => 'Software',
+        'status' => 'new',
+        'notes' => 'Met them at a meetup.',
+    ])->assertRedirect(route('companies.index'));
+
+    $this->assertDatabaseHas('companies', [
+        'name' => 'Acme BV',
+        'city' => 'Amsterdam',
+        'status' => 'new',
+    ]);
+});
+
+it('validates a company on create', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => '',
+        'email' => 'not-an-email',
+        'status' => 'invalid',
+    ])->assertSessionHasErrors(['name', 'email', 'status']);
+
+    expect(Company::count())->toBe(0);
+});
+
+it('updates a company', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['name' => 'Old Name', 'status' => 'new']);
+
+    $this->put(route('companies.update', $company), [
+        'name' => 'New Name',
+        'website' => null,
+        'email' => null,
+        'contact_name' => null,
+        'city' => null,
+        'kvk_number' => null,
+        'industry' => null,
+        'status' => 'sent',
+        'notes' => null,
+    ])->assertRedirect(route('companies.index'));
+
+    expect($company->fresh())
+        ->name->toBe('New Name')
+        ->status->toBe(CompanyStatus::Sent);
+});
+
+it('deletes a company', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create();
+
+    $this->delete(route('companies.destroy', $company))
+        ->assertRedirect(route('companies.index'));
+
+    $this->assertDatabaseMissing('companies', ['id' => $company->id]);
 });

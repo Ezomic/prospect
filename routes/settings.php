@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\CvController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -24,6 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+
+    Route::get('settings/cv', [CvController::class, 'edit'])->name('cv.edit');
+    Route::post('settings/cv', [CvController::class, 'update'])->name('cv.update');
+    Route::delete('settings/cv', [CvController::class, 'destroy'])->name('cv.destroy');
+    Route::get('settings/cv/download', [CvController::class, 'download'])->name('cv.download');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

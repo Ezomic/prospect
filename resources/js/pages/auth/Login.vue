@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
+import { redirect as ssoRedirect } from '@/routes/sso';
 
 defineOptions({
     layout: {
@@ -37,6 +38,16 @@ defineProps<{
     </div>
 
     <PasskeyVerify />
+
+    <Button class="w-full" as-child>
+        <a :href="ssoRedirect().url">Sign in with Thijssensoftware</a>
+    </Button>
+
+    <div class="my-6 flex items-center gap-3">
+        <span class="h-px flex-1 bg-border" />
+        <span class="text-xs text-muted-foreground">or</span>
+        <span class="h-px flex-1 bg-border" />
+    </div>
 
     <Form
         v-bind="store.form()"

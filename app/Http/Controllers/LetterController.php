@@ -7,6 +7,7 @@ use App\Enums\LetterStatus;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Models\Company;
 use App\Models\Letter;
+use App\Models\User;
 use App\Services\Mail\LetterSender;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -50,8 +51,11 @@ class LetterController extends Controller
     {
         $letter->load('company');
 
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
         try {
-            $sender->send($letter, $request->user());
+            $sender->send($letter, $user);
         } catch (RuntimeException $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
 

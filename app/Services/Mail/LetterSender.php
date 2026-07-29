@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Mime\Email;
 use Webklex\PHPIMAP\ClientManager;
+use Webklex\PHPIMAP\Folder;
 
 /**
  * Sends an open-aanbod letter as an email from the configured outreach
@@ -64,24 +65,28 @@ class LetterSender
     {
         $config = config('services.outreach_imap');
 
-        if (empty($config['host'])) {
+        if (! is_array($config) || empty($config['host'])) {
             return;
         }
 
         try {
             $client = (new ClientManager)->make([
                 'host' => $config['host'],
-                'port' => $config['port'],
-                'encryption' => $config['encryption'],
+                'port' => $config['port'] ?? null,
+                'encryption' => $config['encryption'] ?? null,
                 'validate_cert' => true,
-                'username' => $config['username'],
-                'password' => $config['password'],
+                'username' => $config['username'] ?? null,
+                'password' => $config['password'] ?? null,
                 'timeout' => 30,
             ]);
             $client->connect();
 
             $sentFolder = null;
             foreach ($client->getFolders(false) as $folder) {
+                if (! $folder instanceof Folder) {
+                    continue;
+                }
+
                 if (str_contains(strtolower($folder->name), 'sent')) {
                     $sentFolder = $folder;
                     break;

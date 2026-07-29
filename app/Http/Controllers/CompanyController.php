@@ -18,8 +18,8 @@ class CompanyController extends Controller
 {
     public function index(IndexCompanyRequest $request): Response
     {
-        $search = $request->validated('search');
-        $status = $request->validated('status');
+        $search = $request->string('search')->toString() ?: null;
+        $status = $request->string('status')->toString() ?: null;
 
         $companies = Company::query()
             ->when($search, fn (Builder $query, string $search) => $query->where(fn (Builder $query) => $query
@@ -82,7 +82,7 @@ class CompanyController extends Controller
 
     public function updateStatus(UpdateCompanyStatusRequest $request, Company $company): RedirectResponse
     {
-        $status = CompanyStatus::from($request->validated('status'));
+        $status = CompanyStatus::from($request->string('status')->toString());
 
         $attributes = ['status' => $status];
 

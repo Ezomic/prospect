@@ -27,18 +27,28 @@ class OutreachInbox implements Inbox
 
         $config = config('services.outreach_imap');
 
+        if (! is_array($config)) {
+            return;
+        }
+
         $client = (new ClientManager)->make([
-            'host' => $config['host'],
-            'port' => $config['port'],
-            'encryption' => $config['encryption'],
+            'host' => $config['host'] ?? null,
+            'port' => $config['port'] ?? null,
+            'encryption' => $config['encryption'] ?? null,
             'validate_cert' => true,
-            'username' => $config['username'],
-            'password' => $config['password'],
+            'username' => $config['username'] ?? null,
+            'password' => $config['password'] ?? null,
             'timeout' => 30,
         ]);
         $client->connect();
 
-        $messages = $client->getFolderByPath('INBOX')->query()->unseen()->get();
+        $inbox = $client->getFolderByPath('INBOX');
+
+        if ($inbox === null) {
+            return;
+        }
+
+        $messages = $inbox->query()->unseen()->get();
 
         /** @var Message $message */
         foreach ($messages as $message) {
@@ -54,11 +64,12 @@ class OutreachInbox implements Inbox
 
     private function normalize(Message $message): IncomingMessage
     {
-        $from = $message->getFrom()[0]->mail ?? '';
+        $sender = $message->getFrom()[0] ?? null;
+        $from = is_object($sender) && isset($sender->mail) && is_string($sender->mail) ? $sender->mail : '';
         $body = $message->getTextBody() ?: (string) $message->getHTMLBody();
 
         return $this->parser->parse(
-            (string) $from,
+            $from,
             (string) $message->getSubject(),
             $body,
             (string) $message->getMessageId(),

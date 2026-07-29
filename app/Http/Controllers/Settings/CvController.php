@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreCvRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,6 +27,7 @@ class CvController extends Controller
     public function update(StoreCvRequest $request): RedirectResponse
     {
         $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
         if ($user->cv_path !== null) {
             Storage::disk(self::DISK)->delete($user->cv_path);
@@ -46,6 +48,7 @@ class CvController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
         if ($user->cv_path !== null) {
             Storage::disk(self::DISK)->delete($user->cv_path);
@@ -61,6 +64,7 @@ class CvController extends Controller
     public function download(Request $request): StreamedResponse
     {
         $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
         abort_if($user->cv_path === null || ! Storage::disk(self::DISK)->exists($user->cv_path), 404);
 
@@ -73,6 +77,7 @@ class CvController extends Controller
     private function currentCv(Request $request): ?array
     {
         $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
         if ($user->cv_path === null || ! Storage::disk(self::DISK)->exists($user->cv_path)) {
             return null;

@@ -12,6 +12,7 @@ import {
     Search,
     SearchX,
     Trash2,
+    Upload,
     X,
 } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
@@ -43,6 +44,7 @@ import {
     index as companiesIndex,
     show,
 } from '@/routes/companies';
+import { create as importCompanies } from '@/routes/companies/import';
 import type {
     Company,
     CompanySort,
@@ -162,12 +164,20 @@ const confirmDelete = () => {
                 title="Companies"
                 description="Companies to pitch and track through the outreach pipeline."
             />
-            <Button as-child>
-                <Link :href="create()">
-                    <Plus />
-                    Add company
-                </Link>
-            </Button>
+            <div class="flex items-center gap-2">
+                <Button variant="outline" as-child>
+                    <Link :href="importCompanies()">
+                        <Upload />
+                        Import
+                    </Link>
+                </Button>
+                <Button as-child>
+                    <Link :href="create()">
+                        <Plus />
+                        Add company
+                    </Link>
+                </Button>
+            </div>
         </div>
 
         <div

@@ -68,7 +68,7 @@ it('does not send when the company has no email', function () {
     $this->actingAs(userWithCv());
 
     $company = Company::factory()->create(['email' => null]);
-    $letter = Letter::factory()->create(['company_id' => $company->id]);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id]);
 
     $this->post(route('letters.send', $letter))->assertRedirect();
 
@@ -83,7 +83,7 @@ it('does not send when the user has no cv', function () {
     $this->actingAs(User::factory()->create(['cv_path' => null]));
 
     $company = Company::factory()->create(['email' => 'hr@acme.example']);
-    $letter = Letter::factory()->create(['company_id' => $company->id]);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id]);
 
     $this->post(route('letters.send', $letter))->assertRedirect();
 
@@ -98,7 +98,7 @@ it('advances a new company to sent', function () {
     $this->actingAs(userWithCv());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
-    $letter = Letter::factory()->create(['company_id' => $company->id, 'sent_at' => null]);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
 
     $this->post(route('letters.send', $letter));
 
@@ -117,7 +117,7 @@ it('keeps the company status when sending a further letter to a company past Sen
         'replied_at' => $status === 'replied' ? now() : null,
         'bounced_at' => $status === 'bounced' ? now() : null,
     ]);
-    $letter = Letter::factory()->create(['company_id' => $company->id, 'sent_at' => null]);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
 
     $this->post(route('letters.send', $letter));
 
@@ -126,3 +126,20 @@ it('keeps the company status when sending a further letter to a company past Sen
     expect($letter->fresh()->sent_at)->not->toBeNull()
         ->and($company->fresh()->status)->toBe(CompanyStatus::from($status));
 })->with(['replied', 'bounced', 'closed', 'sent']);
+
+it('does not send a letter that is still a draft', function () {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(userWithCv());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->create(['company_id' => $company->id, 'status' => 'draft']);
+
+    $this->post(route('letters.send', $letter))->assertRedirect();
+
+    Mail::assertNothingSent();
+
+    expect($letter->fresh()->sent_at)->toBeNull()
+        ->and($company->fresh()->status)->toBe(CompanyStatus::New);
+});

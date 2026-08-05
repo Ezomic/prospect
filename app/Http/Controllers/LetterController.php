@@ -40,6 +40,12 @@ class LetterController extends Controller
 
     public function update(UpdateLetterRequest $request, Letter $letter): RedirectResponse
     {
+        if ($letter->sent_at !== null) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('A sent letter can no longer be edited.')]);
+
+            return back();
+        }
+
         $letter->update($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter saved.')]);
@@ -88,13 +94,15 @@ class LetterController extends Controller
     }
 
     /**
+     * The editable statuses only: Sent is reached by actually sending.
+     *
      * @return array<int, array{value: string, label: string}>
      */
     private function statusOptions(): array
     {
         return array_map(
             fn (LetterStatus $status) => ['value' => $status->value, 'label' => $status->label()],
-            LetterStatus::cases(),
+            [LetterStatus::Draft, LetterStatus::Ready],
         );
     }
 }

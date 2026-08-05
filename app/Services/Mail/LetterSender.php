@@ -54,7 +54,12 @@ class LetterSender
             'sent_at' => now(),
         ])->save();
 
-        $letter->company->update(['status' => CompanyStatus::Sent]);
+        // Only ever advance a fresh company. A follow-up letter to a company
+        // that already replied, bounced or was closed must not discard that
+        // outcome, not least because ProcessIncomingMail keys off Sent.
+        if ($letter->company->status === CompanyStatus::New) {
+            $letter->company->update(['status' => CompanyStatus::Sent]);
+        }
 
         if ($captured !== null) {
             $this->appendToSentFolder($captured->toString());

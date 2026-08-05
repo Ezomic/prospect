@@ -90,3 +90,39 @@ it('does not send when the user has no cv', function () {
     Mail::assertNothingSent();
     expect($letter->fresh()->sent_at)->toBeNull();
 });
+
+it('advances a new company to sent', function () {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(userWithCv());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter));
+
+    expect($company->fresh()->status)->toBe(CompanyStatus::Sent);
+});
+
+it('keeps the company status when sending a further letter to a company past Sent', function (string $status) {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(userWithCv());
+
+    $company = Company::factory()->create([
+        'email' => 'hr@acme.example',
+        'status' => $status,
+        'replied_at' => $status === 'replied' ? now() : null,
+        'bounced_at' => $status === 'bounced' ? now() : null,
+    ]);
+    $letter = Letter::factory()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter));
+
+    Mail::assertSent(OutreachMail::class);
+
+    expect($letter->fresh()->sent_at)->not->toBeNull()
+        ->and($company->fresh()->status)->toBe(CompanyStatus::from($status));
+})->with(['replied', 'bounced', 'closed', 'sent']);

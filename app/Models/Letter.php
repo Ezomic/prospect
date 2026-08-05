@@ -18,13 +18,14 @@ use Illuminate\Support\Carbon;
  * @property string|null $email_subject
  * @property string|null $email_body
  * @property LetterStatus $status
+ * @property string|null $send_error
  * @property Carbon|null $generated_at
  * @property Carbon|null $sent_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Company $company
  */
-#[Fillable(['subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'sent_at'])]
+#[Fillable(['subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'sent_at', 'send_error'])]
 class Letter extends Model
 {
     /** @use HasFactory<LetterFactory> */

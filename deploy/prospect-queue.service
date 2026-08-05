@@ -1,0 +1,15 @@
+[Unit]
+Description=Prospect queue worker
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+User=deploy
+Group=deploy
+Restart=always
+RestartSec=3
+WorkingDirectory=/home/deploy/prospect
+ExecStart=/usr/bin/php /home/deploy/prospect/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --backoff=10
+
+[Install]
+WantedBy=multi-user.target

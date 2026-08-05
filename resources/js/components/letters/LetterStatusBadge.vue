@@ -10,12 +10,14 @@ defineProps<{
 const variants: Record<LetterStatus, BadgeVariants['variant']> = {
     draft: 'secondary',
     ready: 'default',
+    sending: 'secondary',
     sent: 'outline',
 };
 
 const labels: Record<LetterStatus, string> = {
     draft: 'Draft',
     ready: 'Ready',
+    sending: 'Sending',
     sent: 'Sent',
 };
 </script>

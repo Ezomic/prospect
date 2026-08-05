@@ -4,32 +4,38 @@ namespace App\Services\Mail;
 
 use App\Enums\CompanyStatus;
 use App\Enums\LetterStatus;
+use App\Jobs\AppendLetterToSentFolder;
 use App\Mail\OutreachMail;
 use App\Models\Letter;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Mime\Email;
-use Webklex\PHPIMAP\ClientManager;
-use Webklex\PHPIMAP\Folder;
 
 /**
  * Sends an open-aanbod letter as an email from the configured outreach
  * account, with the letter PDF and the user's CV attached. After sending it
- * marks the letter and company as sent, and best-effort appends the message
- * to the IMAP Sent folder.
+ * marks the letter and company as sent, and queues the message to be filed in
+ * the IMAP Sent folder.
  */
 class LetterSender
 {
-    public function send(Letter $letter, User $user): void
+    /**
+     * Every reason a send can be refused, checked without doing any work, so
+     * the request that queues a letter can answer immediately. The delivery
+     * job runs it again: between queueing and running, the day's limit can
+     * fill up or the company can be marked do not contact.
+     */
+    public function guard(Letter $letter, User $user): void
     {
         if ($letter->sent_at !== null) {
             throw new RuntimeException('This letter has already been sent.');
         }
 
-        if ($letter->status !== LetterStatus::Ready) {
+        if (! in_array($letter->status, [LetterStatus::Ready, LetterStatus::Sending], true)) {
             throw new RuntimeException('Mark the letter as ready before sending it.');
         }
 
@@ -45,12 +51,28 @@ class LetterSender
 
         $this->guardDailyLimit();
 
+        $this->cvPath($user);
+    }
+
+    private function cvPath(User $user): string
+    {
         if ($user->cv_path === null || ! Storage::disk('local')->exists($user->cv_path)) {
             throw new RuntimeException('No CV is available to attach.');
         }
 
+        return $user->cv_path;
+    }
+
+    /**
+     * Renders and delivers the letter. Runs on the queue: dompdf, SMTP and the
+     * Sent-folder append are all far too slow to sit in a web request.
+     */
+    public function deliver(Letter $letter, User $user): void
+    {
+        $this->guard($letter, $user);
+
         $pdf = Pdf::loadView('pdf.letter', ['letter' => $letter])->output();
-        $cv = Storage::disk('local')->get($user->cv_path);
+        $cv = Storage::disk('local')->get($this->cvPath($user));
 
         $captured = null;
 
@@ -64,6 +86,7 @@ class LetterSender
         $letter->forceFill([
             'status' => LetterStatus::Sent,
             'sent_at' => now(),
+            'send_error' => null,
         ])->save();
 
         // Only ever advance a fresh company. A follow-up letter to a company
@@ -74,7 +97,7 @@ class LetterSender
         }
 
         if ($captured !== null) {
-            $this->appendToSentFolder($captured->toString());
+            AppendLetterToSentFolder::dispatch($this->stashRawMessage($letter, $captured->toString()));
         }
     }
 
@@ -108,43 +131,16 @@ class LetterSender
         }
     }
 
-    private function appendToSentFolder(string $rawMessage): void
+    /**
+     * The raw MIME can carry megabytes of attachments, so it goes to disk and
+     * the job carries only the path.
+     */
+    private function stashRawMessage(Letter $letter, string $rawMessage): string
     {
-        $config = config('services.outreach_imap');
+        $path = "outreach-sent/{$letter->id}-".Str::uuid()->toString().'.eml';
 
-        if (! is_array($config) || empty($config['host'])) {
-            return;
-        }
+        Storage::disk('local')->put($path, $rawMessage);
 
-        try {
-            $client = (new ClientManager)->make([
-                'host' => $config['host'],
-                'port' => $config['port'] ?? null,
-                'encryption' => $config['encryption'] ?? null,
-                'validate_cert' => true,
-                'username' => $config['username'] ?? null,
-                'password' => $config['password'] ?? null,
-                'timeout' => 30,
-            ]);
-            $client->connect();
-
-            $sentFolder = null;
-            foreach ($client->getFolders(false) as $folder) {
-                if (! $folder instanceof Folder) {
-                    continue;
-                }
-
-                if (str_contains(strtolower($folder->name), 'sent')) {
-                    $sentFolder = $folder;
-                    break;
-                }
-            }
-
-            // appendMessage lives on the Folder, not the Client.
-            $sentFolder?->appendMessage($rawMessage, ['Seen']);
-        } catch (\Throwable) {
-            // Best-effort: a successful send must not fail because the IMAP
-            // append did not work.
-        }
+        return $path;
     }
 }

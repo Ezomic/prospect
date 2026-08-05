@@ -24,7 +24,9 @@ it('detects a bounce from mailer-daemon and parses the failed recipient', functi
 });
 
 it('detects a bounce by subject when the sender is not a daemon', function () {
-    $message = $this->parser->parse('postmaster@acme.example', 'Delivery Status Notification (Failure)', 'hr@acme.example failed');
+    $body = "<hr@acme.example>: host mx.acme.example[10.0.0.1] said: 550 5.1.1 unknown\n";
+
+    $message = $this->parser->parse('postmaster@acme.example', 'Delivery Status Notification (Failure)', $body);
 
     expect($message->isBounce)->toBeTrue()
         ->and($message->failedRecipients)->toContain('hr@acme.example');
@@ -36,4 +38,62 @@ it('lowercases and de-duplicates parsed recipients', function () {
     $message = $this->parser->parse('mailer-daemon@x', 'failure notice', $body);
 
     expect($message->failedRecipients)->toBe(['hr@acme.example']);
+});
+
+it('ignores addresses that a bounce merely quotes', function () {
+    $body = <<<'BODY'
+    Your message could not be delivered.
+
+    Final-Recipient: rfc822; hr@acme.example
+    Action: failed
+    Status: 5.1.1
+
+    ----- Original message -----
+    From: info@thijssensoftware.nl
+    To: hr@acme.example
+    Cc: someone-else@othercompany.example
+    Subject: Open sollicitatie
+
+    Geachte heer, mevrouw, ... reageer gerust op contact@thirdparty.example
+    BODY;
+
+    $message = $this->parser->parse('MAILER-DAEMON@mail.example', 'Undelivered Mail Returned to Sender', $body);
+
+    expect($message->failedRecipients)->toBe(['hr@acme.example']);
+});
+
+it('returns no failed recipients when a bounce names none', function () {
+    $body = "Delivery to the following recipient has been delayed.\n\nOriginal message from info@thijssensoftware.nl\n";
+
+    $message = $this->parser->parse('mailer-daemon@mail.example', 'Delivery Status Notification', $body);
+
+    expect($message->isBounce)->toBeTrue()
+        ->and($message->failedRecipients)->toBe([]);
+});
+
+it('parses the gmail style failed recipients header', function () {
+    $body = "X-Failed-Recipients: hr@acme.example\n\nThe response was: 550 no such user\n";
+
+    $message = $this->parser->parse('mailer-daemon@googlemail.com', 'Delivery Status Notification (Failure)', $body);
+
+    expect($message->failedRecipients)->toBe(['hr@acme.example']);
+});
+
+it('parses an exim style failed address block without reading the quoted original', function () {
+    $body = <<<'BODY'
+    This message was created automatically by mail delivery software.
+
+    The following address(es) failed:
+
+      hr@acme.example
+      sales@acme.example
+
+    ------ This is a copy of the message. ------
+
+    To: bystander@othercompany.example
+    BODY;
+
+    $message = $this->parser->parse('Mail Delivery System <MAILER-DAEMON@mx.example>', 'Mail delivery failed', $body);
+
+    expect($message->failedRecipients)->toBe(['hr@acme.example', 'sales@acme.example']);
 });

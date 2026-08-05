@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FollowUpController;
 use App\Http\Controllers\LetterController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -10,6 +11,9 @@ Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('follow-ups', [FollowUpController::class, 'index'])->name('follow-ups.index');
+    Route::patch('follow-ups/{company}/snooze', [FollowUpController::class, 'snooze'])->name('follow-ups.snooze');
 
     Route::resource('companies', CompanyController::class);
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');

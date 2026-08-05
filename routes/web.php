@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CompanyImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FollowUpController;
 use App\Http\Controllers\LetterController;
@@ -14,6 +15,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('follow-ups', [FollowUpController::class, 'index'])->name('follow-ups.index');
     Route::patch('follow-ups/{company}/snooze', [FollowUpController::class, 'snooze'])->name('follow-ups.snooze');
+
+    Route::get('companies/import', [CompanyImportController::class, 'create'])->name('companies.import.create');
+    Route::post('companies/import/preview', [CompanyImportController::class, 'preview'])->name('companies.import.preview');
+    Route::post('companies/import', [CompanyImportController::class, 'store'])->name('companies.import.store');
 
     Route::resource('companies', CompanyController::class);
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');

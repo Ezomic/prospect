@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Letters\GenerateLetter;
 use App\Enums\LetterStatus;
 use App\Http\Requests\UpdateLetterRequest;
+use App\Jobs\SendLetter;
 use App\Models\Company;
 use App\Models\Letter;
 use App\Models\User;
@@ -47,6 +48,12 @@ class LetterController extends Controller
             return back();
         }
 
+        if ($letter->status === LetterStatus::Sending) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('This letter is being sent and cannot be edited.')]);
+
+            return back();
+        }
+
         $letter->update($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter saved.')]);
@@ -61,15 +68,21 @@ class LetterController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 403);
 
+        // Guarded here rather than only in the job so a refusal is still an
+        // immediate, visible answer instead of a silent failure on the queue.
         try {
-            $sender->send($letter, $user);
+            $sender->guard($letter, $user);
         } catch (RuntimeException $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
 
             return back();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter sent.')]);
+        $letter->forceFill(['status' => LetterStatus::Sending, 'send_error' => null])->save();
+
+        SendLetter::dispatch($letter, $user);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter queued for sending.')]);
 
         return to_route('companies.show', $letter->company_id);
     }

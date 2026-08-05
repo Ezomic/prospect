@@ -62,11 +62,17 @@ const submit = () => {
 };
 
 const isSent = computed(() => props.letter.sent_at !== null);
+const isSending = computed(() => props.letter.status === 'sending');
 const isReady = computed(() => props.letter.status === 'ready');
+const isLocked = computed(() => isSent.value || isSending.value);
 const recipient = computed(() => props.letter.company?.email ?? null);
 const blocked = computed(() => props.letter.company?.do_not_contact === true);
 
 const sendBlockedReason = computed(() => {
+    if (isSending.value) {
+        return 'This letter is already queued for sending';
+    }
+
     if (blocked.value) {
         return 'This company is marked do not contact';
     }
@@ -148,7 +154,7 @@ const confirmDelete = () => {
                     @click="sendOpen = true"
                 >
                     <Send />
-                    {{ isSent ? 'Sent' : 'Send' }}
+                    {{ isSent ? 'Sent' : isSending ? 'Sending' : 'Send' }}
                 </Button>
             </div>
         </div>
@@ -160,8 +166,26 @@ const confirmDelete = () => {
             This letter was sent and can no longer be edited.
         </p>
 
+        <p
+            v-else-if="isSending"
+            class="max-w-3xl rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+        >
+            This letter is queued for sending. Reload in a moment to see the
+            result.
+        </p>
+
+        <p
+            v-if="letter.send_error"
+            class="max-w-3xl rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive"
+        >
+            The last send attempt failed: {{ letter.send_error }}
+        </p>
+
         <form class="max-w-3xl space-y-6" @submit.prevent="submit">
-            <fieldset :disabled="isSent" class="space-y-6 disabled:opacity-60">
+            <fieldset
+                :disabled="isLocked"
+                class="space-y-6 disabled:opacity-60"
+            >
                 <div class="grid gap-2">
                     <Label for="subject">Subject</Label>
                     <Input id="subject" v-model="form.subject" required />

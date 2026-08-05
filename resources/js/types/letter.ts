@@ -1,6 +1,6 @@
 import type { Company } from './company';
 
-export type LetterStatus = 'draft' | 'ready' | 'sent';
+export type LetterStatus = 'draft' | 'ready' | 'sending' | 'sent';
 
 export type LetterStatusOption = {
     value: LetterStatus;
@@ -20,5 +20,6 @@ export type Letter = LetterSummary & {
     body: string;
     email_subject: string;
     email_body: string;
+    send_error: string | null;
     company?: Company;
 };

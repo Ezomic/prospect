@@ -3,6 +3,10 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import {
     Ban,
     Building2,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
     Pencil,
     Plus,
     Search,
@@ -39,11 +43,22 @@ import {
     index as companiesIndex,
     show,
 } from '@/routes/companies';
-import type { Company, CompanyStatus, CompanyStatusOption } from '@/types';
+import type {
+    Company,
+    CompanySort,
+    CompanyStatus,
+    CompanyStatusOption,
+    Paginated,
+} from '@/types';
 
 const props = defineProps<{
-    companies: Company[];
-    filters: { search: string | null; status: CompanyStatus | null };
+    companies: Paginated<Company>;
+    filters: {
+        search: string | null;
+        status: CompanyStatus | null;
+        sort: CompanySort;
+        direction: 'asc' | 'desc';
+    };
     statuses: CompanyStatusOption[];
 }>();
 
@@ -61,18 +76,47 @@ defineOptions({
 const search = ref(props.filters.search ?? '');
 const status = ref<CompanyStatus | 'all'>(props.filters.status ?? 'all');
 
-const applyFilters = () => {
-    router.get(
-        companiesIndex().url,
-        {
-            search: search.value || undefined,
-            status: status.value === 'all' ? undefined : status.value,
-        },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
+const query = (
+    overrides: Record<string, string | number | undefined> = {},
+) => ({
+    search: search.value || undefined,
+    status: status.value === 'all' ? undefined : status.value,
+    sort: props.filters.sort === 'name' ? undefined : props.filters.sort,
+    direction: props.filters.direction === 'asc' ? undefined : 'desc',
+    ...overrides,
+});
+
+const visit = (overrides: Record<string, string | number | undefined> = {}) => {
+    router.get(companiesIndex().url, query(overrides), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
 };
 
+// Changing a filter invalidates the current page number.
+const applyFilters = () => visit({ page: undefined });
+
 watchDebounced([search, status], applyFilters, { debounce: 300 });
+
+const columns: { key: CompanySort; label: string }[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'lead_score', label: 'Score' },
+    { key: 'status', label: 'Status' },
+    { key: 'last_contact', label: 'Last contact' },
+];
+
+const sortBy = (column: CompanySort) => {
+    const direction =
+        props.filters.sort === column && props.filters.direction === 'asc'
+            ? 'desc'
+            : 'asc';
+
+    visit({ sort: column, direction, page: undefined });
+};
+
+const formatDate = (value: string | null | undefined) =>
+    value ? new Date(value).toLocaleDateString() : '-';
 
 const hasActiveFilters = computed(
     () => search.value !== '' || status.value !== 'all',
@@ -127,7 +171,7 @@ const confirmDelete = () => {
         </div>
 
         <div
-            v-if="companies.length > 0 || hasActiveFilters"
+            v-if="companies.total > 0 || hasActiveFilters"
             class="flex flex-col gap-3 sm:flex-row sm:items-center"
         >
             <div class="relative w-full sm:max-w-xs">
@@ -173,7 +217,7 @@ const confirmDelete = () => {
         </div>
 
         <div
-            v-if="companies.length === 0 && !hasActiveFilters"
+            v-if="companies.data.length === 0 && !hasActiveFilters"
             class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
         >
             <Building2 class="size-8 text-muted-foreground" />
@@ -190,7 +234,7 @@ const confirmDelete = () => {
         </div>
 
         <div
-            v-else-if="companies.length === 0"
+            v-else-if="companies.data.length === 0"
             class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
         >
             <SearchX class="size-8 text-muted-foreground" />
@@ -213,13 +257,41 @@ const confirmDelete = () => {
                     <tr
                         class="border-b border-sidebar-border/70 text-left text-muted-foreground dark:border-sidebar-border"
                     >
-                        <th class="px-4 py-3 font-medium">Name</th>
-                        <th class="px-4 py-3 font-medium">Score</th>
+                        <th
+                            v-for="column in columns"
+                            :key="column.key"
+                            class="px-4 py-3 font-medium"
+                        >
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-foreground"
+                                :aria-sort="
+                                    filters.sort === column.key
+                                        ? filters.direction === 'asc'
+                                            ? 'ascending'
+                                            : 'descending'
+                                        : 'none'
+                                "
+                                @click="sortBy(column.key)"
+                            >
+                                {{ column.label }}
+                                <ChevronUp
+                                    v-if="
+                                        filters.sort === column.key &&
+                                        filters.direction === 'asc'
+                                    "
+                                    class="size-3"
+                                />
+                                <ChevronDown
+                                    v-else-if="filters.sort === column.key"
+                                    class="size-3"
+                                />
+                            </button>
+                        </th>
                         <th class="px-4 py-3 font-medium">Contact</th>
                         <th class="px-4 py-3 font-medium">City</th>
                         <th class="px-4 py-3 font-medium">Industry</th>
                         <th class="px-4 py-3 font-medium">KvK</th>
-                        <th class="px-4 py-3 font-medium">Status</th>
                         <th class="px-4 py-3 font-medium">Website</th>
                         <th class="px-4 py-3 text-right font-medium">
                             Actions
@@ -228,7 +300,7 @@ const confirmDelete = () => {
                 </thead>
                 <tbody>
                     <tr
-                        v-for="company in companies"
+                        v-for="company in companies.data"
                         :key="company.id"
                         class="border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border"
                     >
@@ -252,6 +324,14 @@ const confirmDelete = () => {
                         >
                             {{ company.lead_score ?? '-' }}
                         </td>
+                        <td class="px-4 py-3">
+                            <CompanyStatusBadge :status="company.status" />
+                        </td>
+                        <td
+                            class="px-4 py-3 text-muted-foreground tabular-nums"
+                        >
+                            {{ formatDate(company.last_contact_at) }}
+                        </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ company.contact_name ?? '-' }}
                         </td>
@@ -263,9 +343,6 @@ const confirmDelete = () => {
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ company.kvk_number ?? '-' }}
-                        </td>
-                        <td class="px-4 py-3">
-                            <CompanyStatusBadge :status="company.status" />
                         </td>
                         <td class="px-4 py-3">
                             <a
@@ -303,6 +380,42 @@ const confirmDelete = () => {
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <div
+            v-if="companies.data.length > 0"
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+            <p class="text-sm text-muted-foreground">
+                Showing {{ companies.from }} to {{ companies.to }} of
+                {{ companies.total }}
+                {{ companies.total === 1 ? 'company' : 'companies' }}
+            </p>
+
+            <div v-if="companies.last_page > 1" class="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="companies.current_page === 1"
+                    @click="visit({ page: companies.current_page - 1 })"
+                >
+                    <ChevronLeft />
+                    Previous
+                </Button>
+                <span class="text-sm text-muted-foreground tabular-nums">
+                    Page {{ companies.current_page }} of
+                    {{ companies.last_page }}
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="companies.current_page === companies.last_page"
+                    @click="visit({ page: companies.current_page + 1 })"
+                >
+                    Next
+                    <ChevronRight />
+                </Button>
+            </div>
         </div>
     </div>
 

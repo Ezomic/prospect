@@ -25,4 +25,7 @@ export type Company = {
     replied_at: string | null;
     bounced_at: string | null;
     follow_up_at: string | null;
+    last_contact_at?: string | null;
 };
+
+export type CompanySort = 'name' | 'status' | 'lead_score' | 'last_contact';

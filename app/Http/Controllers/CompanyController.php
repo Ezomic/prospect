@@ -20,8 +20,12 @@ class CompanyController extends Controller
     {
         $search = $request->string('search')->toString() ?: null;
         $status = $request->string('status')->toString() ?: null;
+        $sort = $request->sort();
+        $direction = $request->direction();
 
         $companies = Company::query()
+            ->select(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'source', 'lead_score', 'do_not_contact'])
+            ->withMax('letters as last_contact_at', 'sent_at')
             ->when($search, fn (Builder $query, string $search) => $query->where(fn (Builder $query) => $query
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('contact_name', 'like', "%{$search}%")
@@ -29,12 +33,21 @@ class CompanyController extends Controller
                 ->orWhere('industry', 'like', "%{$search}%")
             ))
             ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
-            ->orderBy('name')
-            ->get(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'source', 'lead_score', 'do_not_contact']);
+            ->orderBy(IndexCompanyRequest::SORTABLE[$sort], $direction)
+            // A stable tie-break, so paging through equal values cannot repeat
+            // or skip a row.
+            ->orderBy('id')
+            ->paginate(25)
+            ->withQueryString();
 
         return Inertia::render('companies/Index', [
             'companies' => $companies,
-            'filters' => ['search' => $search, 'status' => $status],
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
             'statuses' => $this->statusOptions(),
         ]);
     }

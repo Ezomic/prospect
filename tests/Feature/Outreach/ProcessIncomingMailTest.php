@@ -69,3 +69,32 @@ it('is a no-op when reprocessing an already-replied company', function () {
 
     expect($company->fresh()->replied_at->toDateTimeString())->toBe($repliedAt->toDateTimeString());
 });
+
+it('does not mark a company replied on an out-of-office notice', function () {
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent', 'replied_at' => null]);
+
+    $this->action->handle(new IncomingMessage(
+        from: 'hr@acme.example',
+        subject: 'Automatisch antwoord: Open sollicitatie',
+        isBounce: false,
+        isAutoReply: true,
+    ));
+
+    expect($company->fresh())
+        ->status->toBe(CompanyStatus::Sent)
+        ->and($company->fresh()->replied_at)->toBeNull();
+});
+
+it('still marks a company bounced when the delivery report is auto-submitted', function () {
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent']);
+
+    $this->action->handle(new IncomingMessage(
+        from: 'mailer-daemon@mail.example',
+        subject: 'Undelivered Mail Returned to Sender',
+        isBounce: true,
+        failedRecipients: ['hr@acme.example'],
+        isAutoReply: true,
+    ));
+
+    expect($company->fresh()->status)->toBe(CompanyStatus::Bounced);
+});

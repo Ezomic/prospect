@@ -73,6 +73,33 @@ class OutreachInbox implements Inbox
             (string) $message->getSubject(),
             $body,
             (string) $message->getMessageId(),
+            $this->autoReplyHeaders($message),
         );
+    }
+
+    /**
+     * The headers that tell an automatic answer from a real one.
+     *
+     * @return array<string, string>
+     */
+    private function autoReplyHeaders(Message $message): array
+    {
+        $header = $message->getHeader();
+
+        if ($header === null) {
+            return [];
+        }
+
+        $headers = [];
+
+        foreach (['auto-submitted', 'x-autoreply', 'x-autorespond', 'x-auto-reply', 'precedence'] as $name) {
+            $value = trim((string) $header->get($name));
+
+            if ($value !== '') {
+                $headers[$name] = $value;
+            }
+        }
+
+        return $headers;
     }
 }

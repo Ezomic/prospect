@@ -6,8 +6,9 @@ use Illuminate\Support\Str;
 
 /**
  * Turns the raw parts of an inbound message into a normalized IncomingMessage,
- * detecting bounces and the recipients they report as undeliverable. Kept free
- * of any IMAP dependency so the heuristics are testable in isolation.
+ * detecting bounces, the recipients they report as undeliverable, and machine
+ * answers such as out-of-office notices. Kept free of any IMAP dependency so
+ * the heuristics are testable in isolation.
  */
 class MailParser
 {
@@ -23,6 +24,21 @@ class MailParser
         'failure notice',
     ];
 
+    private const AUTO_REPLY_HEADERS = ['x-autoreply', 'x-autorespond', 'x-auto-reply'];
+
+    private const AUTO_REPLY_SUBJECTS = [
+        'automatisch antwoord',
+        'automatische reactie',
+        'afwezig',
+        'afwezigheid',
+        'out of office',
+        'out of the office',
+        'automatic reply',
+        'autoreply',
+        'auto-reply',
+        'autoresponse',
+    ];
+
     /**
      * Each pattern names an address the reporting server itself flagged as
      * undeliverable: the DSN fields, the Gmail-style header, and the Postfix
@@ -34,8 +50,16 @@ class MailParser
         '/^\s*<([\w.+-]+@[\w-]+\.[\w.-]+)>:\s/im',
     ];
 
-    public function parse(string $from, string $subject, string $body, ?string $messageId = null): IncomingMessage
-    {
+    /**
+     * @param  array<string, string>  $headers  header values keyed by lowercased name
+     */
+    public function parse(
+        string $from,
+        string $subject,
+        string $body,
+        ?string $messageId = null,
+        array $headers = [],
+    ): IncomingMessage {
         $isBounce = $this->looksLikeBounce($from, $subject);
 
         return new IncomingMessage(
@@ -44,6 +68,7 @@ class MailParser
             isBounce: $isBounce,
             failedRecipients: $isBounce ? $this->failedRecipients($body) : [],
             messageId: $messageId,
+            isAutoReply: $this->looksLikeAutoReply($subject, $headers),
         );
     }
 
@@ -51,6 +76,35 @@ class MailParser
     {
         return Str::contains(strtolower($from), self::BOUNCE_SENDERS)
             || Str::contains(strtolower($subject), self::BOUNCE_SUBJECTS);
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     */
+    private function looksLikeAutoReply(string $subject, array $headers): bool
+    {
+        $headers = array_change_key_case($headers);
+
+        // RFC 3834: anything other than "no" means the message was generated
+        // automatically. Delivery reports carry it too, so callers must test
+        // for a bounce first.
+        $autoSubmitted = strtolower(trim($headers['auto-submitted'] ?? 'no'));
+
+        if ($autoSubmitted !== '' && $autoSubmitted !== 'no') {
+            return true;
+        }
+
+        foreach (self::AUTO_REPLY_HEADERS as $header) {
+            if (trim($headers[$header] ?? '') !== '') {
+                return true;
+            }
+        }
+
+        if (strtolower(trim($headers['precedence'] ?? '')) === 'auto_reply') {
+            return true;
+        }
+
+        return Str::contains(strtolower($subject), self::AUTO_REPLY_SUBJECTS);
     }
 
     /**

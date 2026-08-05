@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Building2, BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import {
+    Building2,
+    BookOpen,
+    CalendarClock,
+    FolderGit2,
+    LayoutGrid,
+} from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -16,6 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { index as companiesIndex } from '@/routes/companies';
+import { index as followUpsIndex } from '@/routes/follow-ups';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -28,6 +35,11 @@ const mainNavItems: NavItem[] = [
         title: 'Companies',
         href: companiesIndex(),
         icon: Building2,
+    },
+    {
+        title: 'Follow-ups',
+        href: followUpsIndex(),
+        icon: CalendarClock,
     },
 ];
 

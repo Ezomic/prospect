@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { BellRing, Building2 } from '@lucide/vue';
+import { BellRing, Building2, ChevronRight } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Card } from '@/components/ui/card';
 import { dashboard } from '@/routes';
 import { index as companiesIndex } from '@/routes/companies';
+import { index as followUpsIndex } from '@/routes/follow-ups';
 import type { CompanyStatus } from '@/types';
 
 defineProps<{
@@ -42,26 +43,30 @@ const dotColors: Record<CompanyStatus, string> = {
             description="Your outreach pipeline at a glance."
         />
 
-        <Card
-            v-if="followUpsDue > 0"
-            class="flex items-center justify-between gap-4 border-amber-500/40 bg-amber-500/5 p-5"
-        >
-            <div class="flex items-center gap-3">
-                <BellRing class="size-5 text-amber-600 dark:text-amber-500" />
-                <div>
-                    <p class="text-sm font-medium">Follow-ups due</p>
-                    <p class="text-sm text-muted-foreground">
-                        {{ followUpsDue }}
-                        {{
-                            followUpsDue === 1
-                                ? 'company needs'
-                                : 'companies need'
-                        }}
-                        a follow-up.
-                    </p>
+        <Link v-if="followUpsDue > 0" :href="followUpsIndex()" class="group">
+            <Card
+                class="flex items-center justify-between gap-4 border-amber-500/40 bg-amber-500/5 p-5 transition-colors group-hover:border-amber-500/70"
+            >
+                <div class="flex items-center gap-3">
+                    <BellRing
+                        class="size-5 text-amber-600 dark:text-amber-500"
+                    />
+                    <div>
+                        <p class="text-sm font-medium">Follow-ups due</p>
+                        <p class="text-sm text-muted-foreground">
+                            {{ followUpsDue }}
+                            {{
+                                followUpsDue === 1
+                                    ? 'company needs'
+                                    : 'companies need'
+                            }}
+                            a follow-up.
+                        </p>
+                    </div>
                 </div>
-            </div>
-        </Card>
+                <ChevronRight class="size-4 text-muted-foreground" />
+            </Card>
+        </Link>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link :href="companiesIndex()" class="group">

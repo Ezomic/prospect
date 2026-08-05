@@ -29,6 +29,10 @@ class LetterSender
             throw new RuntimeException('This letter has already been sent.');
         }
 
+        if ($letter->status !== LetterStatus::Ready) {
+            throw new RuntimeException('Mark the letter as ready before sending it.');
+        }
+
         if ($letter->company->email === null) {
             throw new RuntimeException('The company has no email address.');
         }

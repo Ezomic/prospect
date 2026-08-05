@@ -19,7 +19,9 @@ class UpdateLetterRequest extends FormRequest
             'body' => ['required', 'string'],
             'email_subject' => ['required', 'string', 'max:255'],
             'email_body' => ['required', 'string'],
-            'status' => ['required', Rule::enum(LetterStatus::class)],
+            // Sent is owned by the sender, never by the form: allowing it here
+            // let a letter claim it was sent when no mail ever left.
+            'status' => ['required', Rule::enum(LetterStatus::class)->except(LetterStatus::Sent)],
         ];
     }
 }

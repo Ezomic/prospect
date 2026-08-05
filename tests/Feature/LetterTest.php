@@ -64,7 +64,7 @@ it('renders the letter edit page', function () {
             ->component('letters/Edit')
             ->where('letter.id', $letter->id)
             ->has('letter.company')
-            ->has('statuses', 3)
+            ->has('statuses', 2)
         );
 });
 
@@ -120,4 +120,57 @@ it('includes letters on the company detail page', function () {
             ->component('companies/Show')
             ->has('letters', 2)
         );
+});
+
+it('rejects setting a letter to sent from the edit form', function () {
+    $this->actingAs(User::factory()->create());
+
+    $letter = Letter::factory()->create(['status' => 'draft']);
+
+    $this->put(route('letters.update', $letter), [
+        'subject' => 'Subject',
+        'body' => 'Body',
+        'email_subject' => 'Email subject',
+        'email_body' => 'Email body',
+        'status' => 'sent',
+    ])->assertSessionHasErrors('status');
+
+    expect($letter->fresh())
+        ->status->toBe(LetterStatus::Draft)
+        ->sent_at->toBeNull();
+});
+
+it('does not offer sent as an editable status', function () {
+    $this->actingAs(User::factory()->create());
+
+    $letter = Letter::factory()->create();
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('statuses', 2)
+            ->where('statuses.0.value', 'draft')
+            ->where('statuses.1.value', 'ready')
+        );
+});
+
+it('refuses to edit a letter that was already sent', function () {
+    $this->actingAs(User::factory()->create());
+
+    $letter = Letter::factory()->create([
+        'subject' => 'Original subject',
+        'status' => 'sent',
+        'sent_at' => now()->subDay(),
+    ]);
+
+    $this->put(route('letters.update', $letter), [
+        'subject' => 'Rewritten subject',
+        'body' => 'Body',
+        'email_subject' => 'Email subject',
+        'email_body' => 'Email body',
+        'status' => 'draft',
+    ])->assertRedirect();
+
+    expect($letter->fresh())
+        ->subject->toBe('Original subject')
+        ->status->toBe(LetterStatus::Sent);
 });

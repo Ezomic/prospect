@@ -61,6 +61,7 @@ const submit = () => {
 };
 
 const isSent = computed(() => props.letter.sent_at !== null);
+const isReady = computed(() => props.letter.status === 'ready');
 
 const sendOpen = ref(false);
 const sending = ref(false);
@@ -122,86 +123,101 @@ const confirmDelete = () => {
                     <Trash2 />
                     Delete
                 </Button>
-                <Button :disabled="isSent" @click="sendOpen = true">
+                <Button
+                    :disabled="isSent || !isReady"
+                    :title="
+                        isReady ? undefined : 'Mark the letter as ready first'
+                    "
+                    @click="sendOpen = true"
+                >
                     <Send />
                     {{ isSent ? 'Sent' : 'Send' }}
                 </Button>
             </div>
         </div>
 
+        <p
+            v-if="isSent"
+            class="max-w-3xl rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+        >
+            This letter was sent and can no longer be edited.
+        </p>
+
         <form class="max-w-3xl space-y-6" @submit.prevent="submit">
-            <div class="grid gap-2">
-                <Label for="subject">Subject</Label>
-                <Input id="subject" v-model="form.subject" required />
-                <InputError :message="form.errors.subject" />
-            </div>
+            <fieldset :disabled="isSent" class="space-y-6 disabled:opacity-60">
+                <div class="grid gap-2">
+                    <Label for="subject">Subject</Label>
+                    <Input id="subject" v-model="form.subject" required />
+                    <InputError :message="form.errors.subject" />
+                </div>
 
-            <div class="grid gap-2 sm:max-w-xs">
-                <Label for="status">Status</Label>
-                <Select v-model="form.status">
-                    <SelectTrigger id="status" class="w-full">
-                        <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem
-                            v-for="option in statuses"
-                            :key="option.value"
-                            :value="option.value"
-                        >
-                            {{ option.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-                <InputError :message="form.errors.status" />
-            </div>
+                <div class="grid gap-2 sm:max-w-xs">
+                    <Label for="status">Status</Label>
+                    <Select v-model="form.status">
+                        <SelectTrigger id="status" class="w-full">
+                            <SelectValue placeholder="Select a status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="option in statuses"
+                                :key="option.value"
+                                :value="option.value"
+                            >
+                                {{ option.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <InputError :message="form.errors.status" />
+                </div>
 
-            <div class="grid gap-2">
-                <Label for="body">Letter body</Label>
-                <Textarea
-                    id="body"
-                    v-model="form.body"
-                    class="min-h-[420px] font-mono text-sm"
-                    required
-                />
-                <InputError :message="form.errors.body" />
-            </div>
+                <div class="grid gap-2">
+                    <Label for="body">Letter body</Label>
+                    <Textarea
+                        id="body"
+                        v-model="form.body"
+                        class="min-h-[420px] font-mono text-sm"
+                        required
+                    />
+                    <InputError :message="form.errors.body" />
+                </div>
 
-            <div class="border-t pt-6">
-                <h2 class="text-sm font-medium">Cover email</h2>
-                <p class="text-sm text-muted-foreground">
-                    Sent with the letter and CV attached.
-                </p>
-            </div>
+                <div class="border-t pt-6">
+                    <h2 class="text-sm font-medium">Cover email</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Sent with the letter and CV attached.
+                    </p>
+                </div>
 
-            <div class="grid gap-2">
-                <Label for="email_subject">Email subject</Label>
-                <Input
-                    id="email_subject"
-                    v-model="form.email_subject"
-                    required
-                />
-                <InputError :message="form.errors.email_subject" />
-            </div>
+                <div class="grid gap-2">
+                    <Label for="email_subject">Email subject</Label>
+                    <Input
+                        id="email_subject"
+                        v-model="form.email_subject"
+                        required
+                    />
+                    <InputError :message="form.errors.email_subject" />
+                </div>
 
-            <div class="grid gap-2">
-                <Label for="email_body">Email body</Label>
-                <Textarea
-                    id="email_body"
-                    v-model="form.email_body"
-                    class="min-h-[220px] text-sm"
-                    required
-                />
-                <InputError :message="form.errors.email_body" />
-            </div>
+                <div class="grid gap-2">
+                    <Label for="email_body">Email body</Label>
+                    <Textarea
+                        id="email_body"
+                        v-model="form.email_body"
+                        class="min-h-[220px] text-sm"
+                        required
+                    />
+                    <InputError :message="form.errors.email_body" />
+                </div>
 
-            <div class="flex items-center gap-3">
-                <Button type="submit" :disabled="form.processing">
-                    Save letter
-                </Button>
-                <Button variant="ghost" as-child>
-                    <Link :href="show(letter.company_id)">Cancel</Link>
-                </Button>
-            </div>
+                <div class="flex items-center gap-3">
+                    <Button type="submit" :disabled="form.processing">
+                        Save letter
+                    </Button>
+                    <Button variant="ghost" as-child>
+                        <Link :href="show(letter.company_id)">Cancel</Link>
+                    </Button>
+                </div>
+            </fieldset>
         </form>
     </div>
 

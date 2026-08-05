@@ -28,4 +28,12 @@ class LetterFactory extends Factory
             'sent_at' => null,
         ];
     }
+
+    /**
+     * @return Factory<Letter>
+     */
+    public function ready(): Factory
+    {
+        return $this->state(fn () => ['status' => LetterStatus::Ready]);
+    }
 }

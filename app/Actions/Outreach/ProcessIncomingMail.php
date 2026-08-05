@@ -8,7 +8,8 @@ use App\Services\Mail\IncomingMessage;
 
 /**
  * Applies an inbound message to the pipeline: a reply from a company we emailed
- * marks it Replied; a bounce for a company we emailed marks it Bounced. Only
+ * marks it Replied; a bounce for a company we emailed marks it Bounced; an
+ * automatic answer such as an out-of-office notice marks nothing. Only
  * companies still in Sent are transitioned, so manual outcomes are never
  * overwritten and reprocessing the same message is a no-op.
  */
@@ -21,6 +22,12 @@ class ProcessIncomingMail
                 $this->transition($email, CompanyStatus::Bounced, 'bounced_at');
             }
 
+            return;
+        }
+
+        // An out-of-office notice is not a company answering. Checked after the
+        // bounce branch because delivery reports are automatic messages too.
+        if ($message->isAutoReply) {
             return;
         }
 

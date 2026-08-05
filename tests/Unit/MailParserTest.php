@@ -97,3 +97,58 @@ it('parses an exim style failed address block without reading the quoted origina
 
     expect($message->failedRecipients)->toBe(['hr@acme.example', 'sales@acme.example']);
 });
+
+it('flags an out-of-office by the auto-submitted header', function () {
+    $message = $this->parser->parse(
+        'jane@acme.example',
+        'Re: Open sollicitatie',
+        'Ik ben afwezig tot 1 september.',
+        null,
+        ['Auto-Submitted' => 'auto-replied'],
+    );
+
+    expect($message->isAutoReply)->toBeTrue()
+        ->and($message->isBounce)->toBeFalse();
+});
+
+it('does not flag an auto-submitted header of no', function () {
+    $message = $this->parser->parse(
+        'jane@acme.example',
+        'Re: Open sollicitatie',
+        'Bedankt voor je bericht.',
+        null,
+        ['auto-submitted' => 'no'],
+    );
+
+    expect($message->isAutoReply)->toBeFalse();
+});
+
+it('flags an out-of-office by header', function (string $header) {
+    $message = $this->parser->parse('jane@acme.example', 'Re: hoi', 'body', null, [$header => 'yes']);
+
+    expect($message->isAutoReply)->toBeTrue();
+})->with(['x-autoreply', 'x-autorespond', 'x-auto-reply']);
+
+it('flags an auto_reply precedence', function () {
+    $message = $this->parser->parse('jane@acme.example', 'Re: hoi', 'body', null, ['precedence' => 'auto_reply']);
+
+    expect($message->isAutoReply)->toBeTrue();
+});
+
+it('flags an out-of-office by subject', function (string $subject) {
+    $message = $this->parser->parse('jane@acme.example', $subject, 'body');
+
+    expect($message->isAutoReply)->toBeTrue();
+})->with([
+    'Automatisch antwoord: Open sollicitatie',
+    'Afwezig tot 1 september',
+    'Out of Office: Re: Open sollicitatie',
+    'Automatic reply: Open sollicitatie',
+    'AutoReply from Acme',
+]);
+
+it('treats a genuine reply as no auto-reply', function () {
+    $message = $this->parser->parse('jane@acme.example', 'Re: Open sollicitatie', 'Leuk, laten we kennismaken.');
+
+    expect($message->isAutoReply)->toBeFalse();
+});

@@ -10,6 +10,7 @@ class IncomingMessage
 {
     /**
      * @param  list<string>  $failedRecipients  the addresses a bounce reports as undeliverable
+     * @param  bool  $isAutoReply  an out-of-office or similar machine answer, not a real reply
      */
     public function __construct(
         public readonly string $from,
@@ -17,5 +18,6 @@ class IncomingMessage
         public readonly bool $isBounce,
         public readonly array $failedRecipients = [],
         public readonly ?string $messageId = null,
+        public readonly bool $isAutoReply = false,
     ) {}
 }

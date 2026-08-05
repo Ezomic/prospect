@@ -35,6 +35,7 @@ class LetterController extends Controller
         return Inertia::render('letters/Edit', [
             'letter' => $letter,
             'statuses' => $this->statusOptions(),
+            'duplicateCompanies' => $this->companiesSharingEmail($letter),
         ]);
     }
 
@@ -91,6 +92,27 @@ class LetterController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter deleted.')]);
 
         return to_route('companies.show', $companyId);
+    }
+
+    /**
+     * Other companies on the same address, so the send confirmation can warn
+     * that this recipient may already have heard from us under another name.
+     *
+     * @return array<int, string>
+     */
+    private function companiesSharingEmail(Letter $letter): array
+    {
+        if ($letter->company->email === null) {
+            return [];
+        }
+
+        return Company::query()
+            ->where('email', $letter->company->email)
+            ->whereKeyNot($letter->company_id)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Company $company) => $company->name)
+            ->all();
     }
 
     /**

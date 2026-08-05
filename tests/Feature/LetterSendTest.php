@@ -143,3 +143,76 @@ it('does not send a letter that is still a draft', function () {
     expect($letter->fresh()->sent_at)->toBeNull()
         ->and($company->fresh()->status)->toBe(CompanyStatus::New);
 });
+
+it('refuses to send when the company is marked do not contact', function () {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(userWithCv());
+
+    $company = Company::factory()->create([
+        'email' => 'hr@acme.example',
+        'status' => 'new',
+        'do_not_contact' => true,
+    ]);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter))->assertRedirect();
+
+    Mail::assertNothingSent();
+
+    expect($letter->fresh()->sent_at)->toBeNull()
+        ->and($company->fresh()->status)->toBe(CompanyStatus::New);
+});
+
+it('refuses to send outside production unless explicitly allowed', function () {
+    Storage::fake('local');
+    Mail::fake();
+    config(['outreach.allow_send' => false]);
+
+    $this->actingAs(userWithCv());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter))->assertRedirect();
+
+    Mail::assertNothingSent();
+    expect($letter->fresh()->sent_at)->toBeNull();
+});
+
+it('refuses to send once the daily limit is reached', function () {
+    Storage::fake('local');
+    Mail::fake();
+    config(['outreach.daily_send_limit' => 2]);
+
+    $this->actingAs(userWithCv());
+
+    Letter::factory()->count(2)->create(['status' => 'sent', 'sent_at' => now()]);
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter))->assertRedirect();
+
+    Mail::assertNothingSent();
+    expect($letter->fresh()->sent_at)->toBeNull();
+});
+
+it('does not count letters sent on earlier days towards the daily limit', function () {
+    Storage::fake('local');
+    Mail::fake();
+    config(['outreach.daily_send_limit' => 2]);
+
+    $this->actingAs(userWithCv());
+
+    Letter::factory()->count(5)->create(['status' => 'sent', 'sent_at' => now()->subDay()]);
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter))->assertRedirect();
+
+    Mail::assertSent(OutreachMail::class);
+    expect($letter->fresh()->sent_at)->not->toBeNull();
+});

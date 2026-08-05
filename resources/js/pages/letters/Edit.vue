@@ -31,6 +31,7 @@ import type { Letter, LetterStatus, LetterStatusOption } from '@/types';
 const props = defineProps<{
     letter: Letter;
     statuses: LetterStatusOption[];
+    duplicateCompanies: string[];
 }>();
 
 defineOptions({
@@ -62,6 +63,24 @@ const submit = () => {
 
 const isSent = computed(() => props.letter.sent_at !== null);
 const isReady = computed(() => props.letter.status === 'ready');
+const recipient = computed(() => props.letter.company?.email ?? null);
+const blocked = computed(() => props.letter.company?.do_not_contact === true);
+
+const sendBlockedReason = computed(() => {
+    if (blocked.value) {
+        return 'This company is marked do not contact';
+    }
+
+    if (recipient.value === null) {
+        return 'This company has no email address';
+    }
+
+    if (!isReady.value) {
+        return 'Mark the letter as ready first';
+    }
+
+    return null;
+});
 
 const sendOpen = ref(false);
 const sending = ref(false);
@@ -124,10 +143,8 @@ const confirmDelete = () => {
                     Delete
                 </Button>
                 <Button
-                    :disabled="isSent || !isReady"
-                    :title="
-                        isReady ? undefined : 'Mark the letter as ready first'
-                    "
+                    :disabled="isSent || sendBlockedReason !== null"
+                    :title="sendBlockedReason ?? undefined"
                     @click="sendOpen = true"
                 >
                     <Send />
@@ -226,16 +243,34 @@ const confirmDelete = () => {
             <DialogHeader>
                 <DialogTitle>Send this letter?</DialogTitle>
                 <DialogDescription>
-                    The cover email will be sent to
-                    {{ letter.company?.email ?? 'the company' }} with the letter
-                    and your CV attached. The company moves to Sent.
+                    The cover email is sent with the letter and your CV
+                    attached. The company moves to Sent.
                 </DialogDescription>
             </DialogHeader>
+
+            <div class="grid gap-1 rounded-md border border-border px-3 py-2">
+                <span class="text-xs text-muted-foreground">Recipient</span>
+                <span class="font-mono text-sm break-all">
+                    {{ recipient ?? 'No email address on this company' }}
+                </span>
+            </div>
+
+            <p
+                v-if="duplicateCompanies.length > 0"
+                class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive"
+            >
+                {{ duplicateCompanies.join(', ') }}
+                {{ duplicateCompanies.length === 1 ? 'shares' : 'share' }}
+                this email address. That inbox may already have heard from you.
+            </p>
             <DialogFooter class="gap-2">
                 <DialogClose as-child>
                     <Button variant="secondary">Cancel</Button>
                 </DialogClose>
-                <Button :disabled="sending" @click="confirmSend">
+                <Button
+                    :disabled="sending || sendBlockedReason !== null"
+                    @click="confirmSend"
+                >
                     <Send />
                     Send
                 </Button>

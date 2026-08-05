@@ -174,3 +174,28 @@ it('refuses to edit a letter that was already sent', function () {
         ->subject->toBe('Original subject')
         ->status->toBe(LetterStatus::Sent);
 });
+
+it('warns about other companies sharing the recipient address', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['name' => 'Acme BV', 'email' => 'info@acme.example']);
+    Company::factory()->create(['name' => 'Acme Holding', 'email' => 'info@acme.example']);
+    Company::factory()->create(['name' => 'Globex', 'email' => 'info@globex.example']);
+
+    $letter = Letter::factory()->create(['company_id' => $company->id]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('duplicateCompanies', ['Acme Holding'])
+        );
+});
+
+it('reports no duplicates when the address is unique', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['email' => 'info@acme.example']);
+    $letter = Letter::factory()->create(['company_id' => $company->id]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page->where('duplicateCompanies', []));
+});

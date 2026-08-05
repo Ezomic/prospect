@@ -21,6 +21,7 @@ export type Company = {
     linkedin_url: string | null;
     lead_score: number | null;
     first_contact_channel: string | null;
+    do_not_contact: boolean;
     replied_at: string | null;
     bounced_at: string | null;
     follow_up_at: string | null;

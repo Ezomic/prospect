@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { ArrowLeft, Ban, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import LetterStatusBadge from '@/components/letters/LetterStatusBadge.vue';
@@ -129,6 +129,13 @@ const clearFollowUp = () => {
                         {{ company.name }}
                     </h1>
                     <CompanyStatusBadge :status="company.status" />
+                    <span
+                        v-if="company.do_not_contact"
+                        class="inline-flex items-center gap-1 rounded-md border border-destructive/50 px-2 py-0.5 text-xs font-medium text-destructive"
+                    >
+                        <Ban class="size-3" />
+                        Do not contact
+                    </span>
                 </div>
                 <div class="flex flex-wrap items-center gap-3 text-sm">
                     <a

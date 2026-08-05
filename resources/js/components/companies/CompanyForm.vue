@@ -2,6 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -35,6 +36,7 @@ const form = useForm({
     linkedin_url: props.company?.linkedin_url ?? '',
     lead_score: props.company?.lead_score ?? null,
     first_contact_channel: props.company?.first_contact_channel ?? '',
+    do_not_contact: props.company?.do_not_contact ?? false,
 });
 
 const submit = () => {
@@ -200,6 +202,22 @@ const submit = () => {
                     placeholder="https://www.linkedin.com/in/..."
                 />
                 <InputError :message="form.errors.linkedin_url" />
+            </div>
+
+            <div class="flex items-start gap-3 sm:col-span-2">
+                <Checkbox
+                    id="do_not_contact"
+                    v-model="form.do_not_contact"
+                    class="mt-0.5"
+                />
+                <div class="grid gap-1">
+                    <Label for="do_not_contact">Do not contact</Label>
+                    <p class="text-sm text-muted-foreground">
+                        Letters can still be drafted, but sending to this
+                        company is refused.
+                    </p>
+                    <InputError :message="form.errors.do_not_contact" />
+                </div>
             </div>
         </div>
 

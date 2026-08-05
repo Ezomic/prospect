@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
+    Ban,
     Building2,
     Pencil,
     Plus,
@@ -232,12 +233,19 @@ const confirmDelete = () => {
                         class="border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border"
                     >
                         <td class="px-4 py-3 font-medium">
-                            <Link
-                                :href="show(company.id)"
-                                class="hover:underline"
-                            >
-                                {{ company.name }}
-                            </Link>
+                            <div class="flex items-center gap-2">
+                                <Link
+                                    :href="show(company.id)"
+                                    class="hover:underline"
+                                >
+                                    {{ company.name }}
+                                </Link>
+                                <Ban
+                                    v-if="company.do_not_contact"
+                                    class="size-3.5 shrink-0 text-destructive"
+                                    aria-label="Do not contact"
+                                />
+                            </div>
                         </td>
                         <td
                             class="px-4 py-3 text-muted-foreground tabular-nums"

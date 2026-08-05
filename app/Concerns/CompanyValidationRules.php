@@ -28,6 +28,7 @@ trait CompanyValidationRules
             'linkedin_url' => ['nullable', 'string', 'url', 'max:255'],
             'lead_score' => ['nullable', 'integer', 'min:0', 'max:10'],
             'first_contact_channel' => ['nullable', 'string', 'max:255'],
+            'do_not_contact' => ['boolean'],
         ];
     }
 }

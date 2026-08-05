@@ -33,9 +33,17 @@ class LetterSender
             throw new RuntimeException('Mark the letter as ready before sending it.');
         }
 
+        $this->guardEnvironment();
+
+        if ($letter->company->do_not_contact) {
+            throw new RuntimeException('This company is marked do not contact.');
+        }
+
         if ($letter->company->email === null) {
             throw new RuntimeException('The company has no email address.');
         }
+
+        $this->guardDailyLimit();
 
         if ($user->cv_path === null || ! Storage::disk('local')->exists($user->cv_path)) {
             throw new RuntimeException('No CV is available to attach.');
@@ -67,6 +75,36 @@ class LetterSender
 
         if ($captured !== null) {
             $this->appendToSentFolder($captured->toString());
+        }
+    }
+
+    /**
+     * Outside production a send is refused unless deliberately opted into, so
+     * a local or staging run can never put mail in a real company's inbox.
+     */
+    private function guardEnvironment(): void
+    {
+        if (app()->environment('production') || config('outreach.allow_send') === true) {
+            return;
+        }
+
+        throw new RuntimeException(
+            'Sending is disabled outside production. Set OUTREACH_ALLOW_SEND=true to send from this environment.'
+        );
+    }
+
+    private function guardDailyLimit(): void
+    {
+        $limit = config('outreach.daily_send_limit');
+
+        if (! is_int($limit) || $limit <= 0) {
+            return;
+        }
+
+        $sentToday = Letter::query()->whereDate('sent_at', today())->count();
+
+        if ($sentToday >= $limit) {
+            throw new RuntimeException("The daily send limit of {$limit} letters has been reached.");
         }
     }
 

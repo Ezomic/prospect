@@ -5,81 +5,70 @@ namespace App\Actions\Letters;
 use App\Enums\LetterStatus;
 use App\Models\Company;
 use App\Models\Letter;
+use App\Models\LetterTemplate;
 
 class GenerateLetter
 {
     public function handle(Company $company): Letter
     {
+        $template = LetterTemplate::current();
+        $values = self::placeholders($company);
+
         return $company->letters()->create([
-            'subject' => $this->subject($company),
-            'body' => $this->body($company),
-            'email_subject' => $this->emailSubject(),
-            'email_body' => $this->emailBody($company),
+            'subject' => self::render($template->subject, $values),
+            'body' => self::render($template->body, $values),
+            'email_subject' => self::render($template->email_subject, $values),
+            'email_body' => self::render($template->email_body, $values),
             'status' => LetterStatus::Draft,
             'generated_at' => now(),
         ]);
     }
 
-    private function subject(Company $company): string
+    /**
+     * An unknown placeholder is left as written rather than blanked, so a typo
+     * is visible in the draft instead of quietly eating a sentence.
+     *
+     * @param  array<string, string>  $values
+     */
+    public static function render(string $template, array $values): string
     {
-        return "Open sollicitatie: freelance softwareontwikkeling voor {$company->name}";
+        return (string) preg_replace_callback(
+            '/\{\{\s*(\w+)\s*\}\}/',
+            fn (array $match) => $values[$match[1]] ?? $match[0],
+            $template,
+        );
     }
 
-    private function body(Company $company): string
+    /**
+     * @return array<string, string>
+     */
+    public static function placeholders(Company $company): array
     {
-        $greeting = $this->greeting($company);
-
-        $opening = $company->city !== null
-            ? "{$company->name} in {$company->city} viel mij op"
-            : "{$company->name} viel mij op";
-
-        $opening .= $company->industry !== null
-            ? " binnen de {$company->industry}."
-            : '.';
-
-        return <<<LETTER
-        {$greeting},
-
-        Mijn naam is Robbin Thijssen, freelance softwareontwikkelaar bij Thijssen Software. {$opening} Graag stel ik mij via deze weg voor.
-
-        Ik bouw moderne webapplicaties met Laravel, Vue en TypeScript, van het eerste ontwerp tot oplevering, hosting en onderhoud. Mijn kracht zit in het zelfstandig oppakken van een vraagstuk en het opleveren van werkende, onderhoudbare software.
-
-        Ik denk dat ik van waarde kan zijn voor het ontwikkelteam van {$company->name}. In een kort gesprek licht ik graag toe wat ik voor u kan betekenen. Mijn cv vindt u in de bijlage.
-
-        Met vriendelijke groet,
-
-        Robbin Thijssen
-        Thijssen Software
-        LETTER;
+        return [
+            'company' => $company->name,
+            'contact' => $company->contact_name ?? '',
+            'city' => $company->city ?? '',
+            'industry' => $company->industry ?? '',
+            'greeting' => self::greeting($company),
+            'opening' => self::opening($company),
+        ];
     }
 
-    private function emailSubject(): string
-    {
-        return 'Open sollicitatie - Robbin Thijssen (Thijssen Software)';
-    }
-
-    private function emailBody(Company $company): string
-    {
-        $greeting = $this->greeting($company);
-
-        return <<<EMAIL
-        {$greeting},
-
-        Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar, samen met mijn cv. In de brief licht ik toe wat ik voor {$company->name} kan betekenen.
-
-        Ik hoor graag of er mogelijkheden zijn om kennis te maken.
-
-        Met vriendelijke groet,
-
-        Robbin Thijssen
-        Thijssen Software
-        EMAIL;
-    }
-
-    private function greeting(Company $company): string
+    private static function greeting(Company $company): string
     {
         return $company->contact_name !== null
             ? "Beste {$company->contact_name}"
             : 'Geachte heer, mevrouw';
+    }
+
+    private static function opening(Company $company): string
+    {
+        $opening = $company->city !== null
+            ? "{$company->name} in {$company->city} viel mij op"
+            : "{$company->name} viel mij op";
+
+        return $opening.($company->industry !== null
+            ? " binnen de {$company->industry}."
+            : '.');
     }
 }

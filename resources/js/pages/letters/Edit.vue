@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, FileDown, Send, Trash2 } from '@lucide/vue';
+import { ArrowLeft, FileDown, RotateCcw, Send, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -25,13 +25,14 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { index as companiesIndex, show } from '@/routes/companies';
-import { destroy, pdf, send, update } from '@/routes/letters';
+import { destroy, pdf, release, send, update } from '@/routes/letters';
 import type { Letter, LetterStatus, LetterStatusOption } from '@/types';
 
 const props = defineProps<{
     letter: Letter;
     statuses: LetterStatusOption[];
     duplicateCompanies: string[];
+    releasable: boolean;
 }>();
 
 defineOptions({
@@ -103,6 +104,19 @@ const confirmSend = () => {
     );
 };
 
+const releasing = ref(false);
+
+const releaseLetter = () => {
+    router.post(
+        release(props.letter.id).url,
+        {},
+        {
+            onStart: () => (releasing.value = true),
+            onFinish: () => (releasing.value = false),
+        },
+    );
+};
+
 const deleteOpen = ref(false);
 const deleting = ref(false);
 
@@ -166,13 +180,33 @@ const confirmDelete = () => {
             This letter was sent and can no longer be edited.
         </p>
 
-        <p
+        <div
             v-else-if="isSending"
-            class="max-w-3xl rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+            class="flex max-w-3xl flex-col gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
         >
-            This letter is queued for sending. Reload in a moment to see the
-            result.
-        </p>
+            <p v-if="!releasable">
+                This letter is queued for sending. Reload in a moment to see the
+                result.
+            </p>
+            <template v-else>
+                <p>
+                    This letter has been queued for a while without completing.
+                    That usually means the worker was restarted mid-send, which
+                    leaves nothing to finish the job. No mail was sent.
+                </p>
+                <div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        :disabled="releasing"
+                        @click="releaseLetter"
+                    >
+                        <RotateCcw />
+                        Release back to ready
+                    </Button>
+                </div>
+            </template>
+        </div>
 
         <p
             v-if="letter.send_error"

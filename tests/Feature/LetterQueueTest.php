@@ -11,6 +11,7 @@ use App\Services\Mail\SentFolderAppender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -112,4 +113,97 @@ it('deletes the stashed message when imap is not configured', function () {
     (new AppendLetterToSentFolder('outreach-sent/1-abc.eml'))->handle(app(SentFolderAppender::class));
 
     Storage::disk('local')->assertMissing('outreach-sent/1-abc.eml');
+});
+
+it('stamps queued_at when a send is queued', function () {
+    Storage::fake('local');
+    Queue::fake();
+
+    $this->actingAs(senderUser());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter));
+
+    expect($letter->fresh()->queued_at)->not->toBeNull();
+});
+
+it('does not offer to release a letter that was only just queued', function () {
+    Storage::fake('local');
+    Queue::fake();
+
+    $this->actingAs(senderUser());
+
+    $letter = Letter::factory()->create([
+        'status' => 'sending',
+        'queued_at' => now(),
+        'sent_at' => null,
+    ]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page->where('releasable', false));
+
+    $this->post(route('letters.release', $letter))->assertRedirect();
+
+    expect($letter->fresh()->status)->toBe(LetterStatus::Sending);
+});
+
+it('releases a letter that has been sending longer than the grace period', function () {
+    Storage::fake('local');
+    Queue::fake();
+    config(['outreach.stuck_after_minutes' => 5]);
+
+    $this->actingAs(senderUser());
+
+    $letter = Letter::factory()->create([
+        'status' => 'sending',
+        'queued_at' => now()->subMinutes(10),
+        'sent_at' => null,
+    ]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page->where('releasable', true));
+
+    $this->post(route('letters.release', $letter))->assertRedirect();
+
+    expect($letter->fresh())
+        ->status->toBe(LetterStatus::Ready)
+        ->queued_at->toBeNull()
+        ->send_error->not->toBeNull();
+});
+
+it('refuses to release a letter that already went out', function () {
+    Storage::fake('local');
+
+    $this->actingAs(senderUser());
+
+    $letter = Letter::factory()->create([
+        'status' => 'sent',
+        'queued_at' => now()->subDay(),
+        'sent_at' => now()->subDay(),
+    ]);
+
+    $this->post(route('letters.release', $letter))->assertRedirect();
+
+    expect($letter->fresh()->status)->toBe(LetterStatus::Sent);
+});
+
+it('clears queued_at once the letter is delivered', function () {
+    Storage::fake('local');
+    Queue::fake([AppendLetterToSentFolder::class]);
+
+    senderUser();
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create([
+        'company_id' => $company->id,
+        'queued_at' => now(),
+        'sent_at' => null,
+    ]);
+    $letter->load('company');
+
+    app(LetterSender::class)->deliver($letter);
+
+    expect($letter->fresh()->queued_at)->toBeNull();
 });

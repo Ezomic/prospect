@@ -126,3 +126,72 @@ it('ships the previous hardcoded copy as the seeded default', function () {
         ->toContain('Mijn naam is Robbin Thijssen, freelance softwareontwikkelaar bij Thijssen Software.')
         ->toContain('{{ greeting }}');
 });
+
+it('points at the portfolio instead of promising a cv', function () {
+    $template = LetterTemplate::current();
+
+    expect($template->body)
+        ->toContain('thijssensoftware.nl')
+        ->not->toContain('cv')
+        ->and($template->email_body)
+        ->toContain('thijssensoftware.nl')
+        ->not->toContain('cv');
+});
+
+function runCvMigration(): void
+{
+    $migration = require database_path('migrations/2026_08_06_120000_replace_cv_mention_with_portfolio_in_letter_template.php');
+    $migration->up();
+}
+
+it('strips the cv claim even from a template the user has rewritten around it', function () {
+    $old = 'Mijn cv vindt u in de bijlage.';
+
+    // A template the user has rewritten around the sentence we replace.
+    LetterTemplate::current()->update([
+        'body' => "Eigen openingszin.\n\n{$old}\n\nEigen afsluiting.",
+        'email_body' => 'Volledig eigen tekst zonder die zin.',
+    ]);
+
+    runCvMigration();
+
+    $template = LetterTemplate::current();
+
+    expect($template->body)->toContain('Eigen openingszin.')
+        ->and($template->body)->toContain('Eigen afsluiting.')
+        // the CV sentence is gone, replaced in place by the portfolio line
+        ->and($template->body)->not->toContain($old)
+        ->and($template->body)->toContain('thijssensoftware.nl')
+        // the email body never mentioned it, so it is untouched
+        ->and($template->email_body)->toBe('Volledig eigen tekst zonder die zin.');
+});
+
+it('rewrites an untouched template to the full new copy', function () {
+    // Put the pre-change copy back, then run the migration over it.
+    LetterTemplate::current()->update([
+        'body' => 'Ik denk dat ik van waarde kan zijn voor het ontwikkelteam van {{ company }}. In een kort gesprek licht ik graag toe wat ik voor u kan betekenen. Mijn cv vindt u in de bijlage.',
+        'email_body' => 'Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar, samen met mijn cv. In de brief licht ik toe wat ik voor {{ company }} kan betekenen.',
+    ]);
+
+    runCvMigration();
+
+    $template = LetterTemplate::current();
+
+    expect($template->body)
+        ->toBe('Ik denk dat ik van waarde kan zijn voor het ontwikkelteam van {{ company }}. In een kort gesprek licht ik graag toe wat ik voor u kan betekenen. Voorbeelden van mijn werk vindt u op thijssensoftware.nl.')
+        ->and($template->email_body)
+        ->toBe('Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar. In de brief licht ik toe wat ik voor {{ company }} kan betekenen, en op thijssensoftware.nl vindt u een overzicht van mijn werk.');
+});
+
+it('leaves a template that never mentioned a cv completely alone', function () {
+    LetterTemplate::current()->update([
+        'body' => 'Volledig eigen brieftekst.',
+        'email_body' => 'Volledig eigen mailtekst.',
+    ]);
+
+    runCvMigration();
+
+    expect(LetterTemplate::current())
+        ->body->toBe('Volledig eigen brieftekst.')
+        ->email_body->toBe('Volledig eigen mailtekst.');
+});

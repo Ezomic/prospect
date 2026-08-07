@@ -36,7 +36,7 @@ class LetterTemplate extends Model
 
         Ik bouw moderne webapplicaties met Laravel, Vue en TypeScript, van het eerste ontwerp tot oplevering, hosting en onderhoud. Mijn kracht zit in het zelfstandig oppakken van een vraagstuk en het opleveren van werkende, onderhoudbare software.
 
-        Ik denk dat ik van waarde kan zijn voor het ontwikkelteam van {{ company }}. In een kort gesprek licht ik graag toe wat ik voor u kan betekenen. Mijn cv vindt u in de bijlage.
+        Ik denk dat ik van waarde kan zijn voor het ontwikkelteam van {{ company }}. In een kort gesprek licht ik graag toe wat ik voor u kan betekenen. Voorbeelden van mijn werk vindt u op thijssensoftware.nl.
 
         Met vriendelijke groet,
 
@@ -47,7 +47,7 @@ class LetterTemplate extends Model
         'email_body' => <<<'EMAIL'
         {{ greeting }},
 
-        Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar, samen met mijn cv. In de brief licht ik toe wat ik voor {{ company }} kan betekenen.
+        Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar. In de brief licht ik toe wat ik voor {{ company }} kan betekenen, en op thijssensoftware.nl vindt u een overzicht van mijn werk.
 
         Ik hoor graag of er mogelijkheden zijn om kennis te maken.
 

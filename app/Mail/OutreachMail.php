@@ -16,13 +16,10 @@ class OutreachMail extends Mailable
 
     /**
      * @param  string  $pdf  the rendered letter PDF bytes
-     * @param  string  $cv  the CV PDF bytes
      */
     public function __construct(
         public Letter $letter,
         public string $pdf,
-        public string $cv,
-        public string $cvName,
     ) {}
 
     public function envelope(): Envelope
@@ -47,8 +44,6 @@ class OutreachMail extends Mailable
     {
         return [
             Attachment::fromData(fn () => $this->pdf, "brief-{$this->letter->id}.pdf")
-                ->withMime('application/pdf'),
-            Attachment::fromData(fn () => $this->cv, $this->cvName)
                 ->withMime('application/pdf'),
         ];
     }

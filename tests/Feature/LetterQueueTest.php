@@ -16,12 +16,7 @@ uses(RefreshDatabase::class);
 
 function senderUser(): User
 {
-    Storage::disk('local')->put('cv/test.pdf', 'PDF-BYTES');
-
-    return User::factory()->create([
-        'cv_path' => 'cv/test.pdf',
-        'cv_original_name' => 'robbin-cv.pdf',
-    ]);
+    return User::factory()->create();
 }
 
 it('queues the send instead of delivering in the request', function () {
@@ -69,13 +64,13 @@ it('queues the sent-folder append rather than appending inline', function () {
     Storage::fake('local');
     Queue::fake([AppendLetterToSentFolder::class]);
 
-    $user = senderUser();
+    senderUser();
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
     $letter->load('company');
 
-    app(LetterSender::class)->deliver($letter, $user);
+    app(LetterSender::class)->deliver($letter);
 
     Queue::assertPushed(AppendLetterToSentFolder::class);
 
@@ -85,10 +80,10 @@ it('queues the sent-folder append rather than appending inline', function () {
 it('hands a failed letter back with the reason instead of leaving it sending', function () {
     Storage::fake('local');
 
-    $user = senderUser();
+    senderUser();
     $letter = Letter::factory()->create(['status' => 'sending', 'sent_at' => null]);
 
-    (new SendLetter($letter, $user))->failed(new RuntimeException('SMTP host unreachable'));
+    (new SendLetter($letter))->failed(new RuntimeException('SMTP host unreachable'));
 
     expect($letter->fresh())
         ->status->toBe(LetterStatus::Ready)
@@ -98,10 +93,10 @@ it('hands a failed letter back with the reason instead of leaving it sending', f
 it('leaves an already delivered letter alone when the failure handler runs', function () {
     Storage::fake('local');
 
-    $user = senderUser();
+    senderUser();
     $letter = Letter::factory()->create(['status' => 'sent', 'sent_at' => now()]);
 
-    (new SendLetter($letter, $user))->failed(new RuntimeException('too late'));
+    (new SendLetter($letter))->failed(new RuntimeException('too late'));
 
     expect($letter->fresh())
         ->status->toBe(LetterStatus::Sent)

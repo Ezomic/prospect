@@ -12,21 +12,16 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-function userWithCv(): User
+function sender(): User
 {
-    Storage::disk('local')->put('cv/test.pdf', 'PDF-BYTES');
-
-    return User::factory()->create([
-        'cv_path' => 'cv/test.pdf',
-        'cv_original_name' => 'robbin-cv.pdf',
-    ]);
+    return User::factory()->create();
 }
 
 it('sends the letter with attachments and updates state', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->create(['company_id' => $company->id, 'status' => 'ready', 'sent_at' => null]);
@@ -47,7 +42,7 @@ it('does not send a letter that was already sent', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example']);
     $letter = Letter::factory()->create([
@@ -65,7 +60,7 @@ it('does not send when the company has no email', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => null]);
     $letter = Letter::factory()->ready()->create(['company_id' => $company->id]);
@@ -76,26 +71,24 @@ it('does not send when the company has no email', function () {
     expect($letter->fresh()->sent_at)->toBeNull();
 });
 
-it('does not send when the user has no cv', function () {
+it('sends without a cv, attaching only the letter pdf', function () {
     Storage::fake('local');
-    Mail::fake();
 
     $this->actingAs(User::factory()->create(['cv_path' => null]));
 
-    $company = Company::factory()->create(['email' => 'hr@acme.example']);
-    $letter = Letter::factory()->ready()->create(['company_id' => $company->id]);
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
 
     $this->post(route('letters.send', $letter))->assertRedirect();
 
-    Mail::assertNothingSent();
-    expect($letter->fresh()->sent_at)->toBeNull();
+    expect($letter->fresh()->sent_at)->not->toBeNull();
 });
 
 it('advances a new company to sent', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
@@ -109,7 +102,7 @@ it('keeps the company status when sending a further letter to a company past Sen
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create([
         'email' => 'hr@acme.example',
@@ -131,7 +124,7 @@ it('does not send a letter that is still a draft', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->create(['company_id' => $company->id, 'status' => 'draft']);
@@ -148,7 +141,7 @@ it('refuses to send when the company is marked do not contact', function () {
     Storage::fake('local');
     Mail::fake();
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create([
         'email' => 'hr@acme.example',
@@ -170,7 +163,7 @@ it('refuses to send outside production unless explicitly allowed', function () {
     Mail::fake();
     config(['outreach.allow_send' => false]);
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
@@ -186,7 +179,7 @@ it('refuses to send once the daily limit is reached', function () {
     Mail::fake();
     config(['outreach.daily_send_limit' => 2]);
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     Letter::factory()->count(2)->create(['status' => 'sent', 'sent_at' => now()]);
 
@@ -204,7 +197,7 @@ it('does not count letters sent on earlier days towards the daily limit', functi
     Mail::fake();
     config(['outreach.daily_send_limit' => 2]);
 
-    $this->actingAs(userWithCv());
+    $this->actingAs(sender());
 
     Letter::factory()->count(5)->create(['status' => 'sent', 'sent_at' => now()->subDay()]);
 
@@ -215,4 +208,22 @@ it('does not count letters sent on earlier days towards the daily limit', functi
 
     Mail::assertSent(OutreachMail::class);
     expect($letter->fresh()->sent_at)->not->toBeNull();
+});
+
+it('attaches only the letter pdf, never a cv', function () {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(sender());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);
+
+    $this->post(route('letters.send', $letter));
+
+    Mail::assertSent(OutreachMail::class, function (OutreachMail $mail) {
+        $attachments = $mail->attachments();
+
+        return count($attachments) === 1;
+    });
 });

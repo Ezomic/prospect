@@ -5,7 +5,9 @@ namespace App\Jobs;
 use App\Services\Mail\SentFolderAppender;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * Files a delivered message in the IMAP Sent folder. Separate from the send so
@@ -33,11 +35,23 @@ class AppendLetterToSentFolder implements ShouldQueue
 
         $appender->append((string) Storage::disk('local')->get($this->rawMessagePath));
 
+        Log::info('Filed a sent letter in the IMAP Sent folder.', [
+            'message' => $this->rawMessagePath,
+        ]);
+
         Storage::disk('local')->delete($this->rawMessagePath);
     }
 
-    public function failed(): void
+    /**
+     * The stashed message is kept rather than deleted. It is the only copy of
+     * a mail that really was sent, and throwing it away on the last retry
+     * would leave no way to file it by hand afterwards.
+     */
+    public function failed(?Throwable $exception): void
     {
-        Storage::disk('local')->delete($this->rawMessagePath);
+        Log::error('Could not file a sent letter in the IMAP Sent folder.', [
+            'message' => $this->rawMessagePath,
+            'error' => $exception?->getMessage(),
+        ]);
     }
 }

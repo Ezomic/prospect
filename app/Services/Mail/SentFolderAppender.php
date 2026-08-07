@@ -2,6 +2,8 @@
 
 namespace App\Services\Mail;
 
+use RuntimeException;
+use Webklex\PHPIMAP\Client;
 use Webklex\PHPIMAP\ClientManager;
 use Webklex\PHPIMAP\Folder;
 
@@ -18,12 +20,42 @@ class SentFolderAppender
         return ! empty(config('services.outreach_imap.host'));
     }
 
+    /**
+     * Throws rather than returning quietly when the folder cannot be found: a
+     * silent no-op here is indistinguishable from a successful file, which is
+     * how this went unproven for so long.
+     */
     public function append(string $rawMessage): void
+    {
+        $sentFolder = null;
+
+        foreach ($this->client()->getFolders(false) as $folder) {
+            if (! $folder instanceof Folder) {
+                continue;
+            }
+
+            if (str_contains(strtolower($folder->name), 'sent')) {
+                $sentFolder = $folder;
+                break;
+            }
+        }
+
+        if ($sentFolder === null) {
+            throw new RuntimeException(
+                'No Sent folder was found on the outreach account. Folders seen: '.$this->folderNames().'.'
+            );
+        }
+
+        // appendMessage lives on the Folder, not the Client.
+        $sentFolder->appendMessage($rawMessage, ['Seen']);
+    }
+
+    private function client(): Client
     {
         $config = config('services.outreach_imap');
 
         if (! is_array($config) || empty($config['host'])) {
-            return;
+            throw new RuntimeException('No outreach IMAP host is configured.');
         }
 
         $client = (new ClientManager)->make([
@@ -37,20 +69,36 @@ class SentFolderAppender
         ]);
         $client->connect();
 
-        $sentFolder = null;
+        return $client;
+    }
 
-        foreach ($client->getFolders(false) as $folder) {
-            if (! $folder instanceof Folder) {
-                continue;
-            }
+    /**
+     * Every folder the account exposes, so a failure says what it did find
+     * rather than only what it wanted.
+     *
+     * @return list<string>
+     */
+    public function folders(): array
+    {
+        $names = [];
 
-            if (str_contains(strtolower($folder->name), 'sent')) {
-                $sentFolder = $folder;
-                break;
+        foreach ($this->client()->getFolders(false) as $folder) {
+            if ($folder instanceof Folder) {
+                $names[] = $folder->name;
             }
         }
 
-        // appendMessage lives on the Folder, not the Client.
-        $sentFolder?->appendMessage($rawMessage, ['Seen']);
+        return $names;
+    }
+
+    private function folderNames(): string
+    {
+        try {
+            $names = $this->folders();
+        } catch (\Throwable) {
+            return 'none readable';
+        }
+
+        return $names === [] ? 'none' : implode(', ', $names);
     }
 }

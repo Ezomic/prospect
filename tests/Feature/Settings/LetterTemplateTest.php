@@ -195,3 +195,42 @@ it('leaves a template that never mentioned a cv completely alone', function () {
         ->body->toBe('Volledig eigen brieftekst.')
         ->email_body->toBe('Volledig eigen mailtekst.');
 });
+
+function runAanbodMigration(): void
+{
+    $migration = require database_path('migrations/2026_08_06_150000_reframe_letter_template_as_open_aanbod.php');
+    $migration->up();
+}
+
+it('frames the letter as an open aanbod rather than an open sollicitatie', function () {
+    $template = LetterTemplate::current();
+
+    expect($template->subject)->toContain('Open aanbod')
+        ->and($template->email_subject)->toContain('Open aanbod')
+        ->and($template->email_body)->toContain('open aanbod')
+        ->and($template->subject.$template->email_subject.$template->body.$template->email_body)
+        ->not->toContain('sollicitatie');
+});
+
+it('reframes a stored template that still uses the old wording', function () {
+    LetterTemplate::current()->update([
+        'subject' => 'Open sollicitatie: freelance softwareontwikkeling voor {{ company }}',
+        'email_subject' => 'Open sollicitatie - Robbin Thijssen (Thijssen Software)',
+        'email_body' => 'Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar. Rest blijft staan.',
+    ]);
+
+    runAanbodMigration();
+
+    expect(LetterTemplate::current())
+        ->subject->toBe('Open aanbod: freelance softwareontwikkeling voor {{ company }}')
+        ->email_subject->toBe('Open aanbod - Robbin Thijssen (Thijssen Software)')
+        ->email_body->toBe('Bijgaand stuur ik u mijn open aanbod als freelance softwareontwikkelaar. Rest blijft staan.');
+});
+
+it('leaves a hand-written subject alone', function () {
+    LetterTemplate::current()->update(['subject' => 'Even voorstellen: {{ company }}']);
+
+    runAanbodMigration();
+
+    expect(LetterTemplate::current()->subject)->toBe('Even voorstellen: {{ company }}');
+});

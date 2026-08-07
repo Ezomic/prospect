@@ -98,3 +98,40 @@ it('still marks a company bounced when the delivery report is auto-submitted', f
 
     expect($company->fresh()->status)->toBe(CompanyStatus::Bounced);
 });
+
+it('reports whether it acted on the message', function () {
+    Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent']);
+
+    // A reply from a company we emailed.
+    expect($this->action->handle(new IncomingMessage('hr@acme.example', 'Re: hoi', false)))->toBeTrue();
+
+    // A stranger writing to the mailbox.
+    expect($this->action->handle(new IncomingMessage('stranger@nowhere.example', 'Offerte?', false)))->toBeFalse();
+});
+
+it('does not treat an out-of-office as acted on, so it stays unread', function () {
+    Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent']);
+
+    $acted = $this->action->handle(new IncomingMessage(
+        from: 'hr@acme.example',
+        subject: 'Automatisch antwoord',
+        isBounce: false,
+        isAutoReply: true,
+    ));
+
+    expect($acted)->toBeFalse();
+});
+
+it('reports a bounce as acted on only when it matched a company', function () {
+    Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent']);
+
+    expect($this->action->handle(new IncomingMessage(
+        from: 'mailer-daemon@x', subject: 'Undelivered', isBounce: true,
+        failedRecipients: ['hr@acme.example'],
+    )))->toBeTrue();
+
+    expect($this->action->handle(new IncomingMessage(
+        from: 'mailer-daemon@x', subject: 'Undelivered', isBounce: true,
+        failedRecipients: ['someone@unknown.example'],
+    )))->toBeFalse();
+});

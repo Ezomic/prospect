@@ -7,10 +7,14 @@ interface Inbox
     public function configured(): bool;
 
     /**
-     * Invoke the handler for each unprocessed inbound message, marking each as
-     * processed afterwards.
+     * Invoke the handler for each unread inbound message.
      *
-     * @param  callable(IncomingMessage): void  $handler
+     * The handler returns true when it acted on the message, and only those
+     * are marked read. Anything else stays unread so it is still visible to a
+     * human: this mailbox receives ordinary mail too, and silently swallowing
+     * it is how a shared mailbox becomes unusable.
+     *
+     * @param  callable(IncomingMessage): bool  $handler
      */
     public function eachUnseen(callable $handler): void;
 }

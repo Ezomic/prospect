@@ -20,9 +20,17 @@ class PollOutreachInbox extends Command
             return self::SUCCESS;
         }
 
-        $inbox->eachUnseen(fn ($message) => $processor->handle($message));
+        $acted = 0;
 
-        $this->info('Outreach mailbox polled.');
+        $inbox->eachUnseen(function ($message) use ($processor, &$acted) {
+            $handled = $processor->handle($message);
+
+            $acted += $handled ? 1 : 0;
+
+            return $handled;
+        });
+
+        $this->info("Outreach mailbox polled, {$acted} message(s) applied to the pipeline.");
 
         return self::SUCCESS;
     }

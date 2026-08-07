@@ -21,7 +21,7 @@ it('polls the inbox and applies outcomes to companies', function () {
 
         public function eachUnseen(callable $handler): void
         {
-            $handler(new IncomingMessage('hr@acme.example', 'Re: Open sollicitatie', false));
+            $handler(new IncomingMessage('hr@acme.example', 'Re: Open aanbod', false));
             $handler(new IncomingMessage('mailer-daemon@x', 'Undelivered', true, ['jobs@globex.example']));
         }
     };
@@ -53,4 +53,39 @@ it('does nothing when imap is not configured', function () {
     $this->artisan('outreach:poll')->assertSuccessful();
 
     expect($fake->polled)->toBeFalse();
+});
+
+it('marks only the messages it acted on as read', function () {
+    Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'sent']);
+
+    $fake = new class implements Inbox
+    {
+        /** @var list<string> */
+        public array $markedRead = [];
+
+        public function configured(): bool
+        {
+            return true;
+        }
+
+        public function eachUnseen(callable $handler): void
+        {
+            $messages = [
+                new IncomingMessage('hr@acme.example', 'Re: Open aanbod', false),
+                new IncomingMessage('accountant@example.com', 'Factuur augustus', false),
+            ];
+
+            foreach ($messages as $message) {
+                if ($handler($message) === true) {
+                    $this->markedRead[] = $message->from;
+                }
+            }
+        }
+    };
+    $this->app->instance(Inbox::class, $fake);
+
+    $this->artisan('outreach:poll')->assertSuccessful();
+
+    // The unrelated invoice stays unread and visible to a human.
+    expect($fake->markedRead)->toBe(['hr@acme.example']);
 });

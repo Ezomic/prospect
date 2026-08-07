@@ -71,10 +71,10 @@ it('does not send when the company has no email', function () {
     expect($letter->fresh()->sent_at)->toBeNull();
 });
 
-it('sends without a cv, attaching only the letter pdf', function () {
+it('sends with only the letter pdf attached', function () {
     Storage::fake('local');
 
-    $this->actingAs(User::factory()->create(['cv_path' => null]));
+    $this->actingAs(User::factory()->create());
 
     $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
     $letter = Letter::factory()->ready()->create(['company_id' => $company->id, 'sent_at' => null]);

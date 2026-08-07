@@ -22,6 +22,8 @@ export type Company = {
     lead_score: number | null;
     first_contact_channel: string | null;
     do_not_contact: boolean;
+    do_not_contact_at: string | null;
+    do_not_contact_reason: string | null;
     replied_at: string | null;
     bounced_at: string | null;
     follow_up_at: string | null;

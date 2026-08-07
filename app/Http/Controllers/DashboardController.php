@@ -22,6 +22,7 @@ class DashboardController extends Controller
                 ->whereNotNull('follow_up_at')
                 ->whereDate('follow_up_at', '<=', today())
                 ->where('status', '!=', CompanyStatus::Closed)
+                ->where('do_not_contact', false)
                 ->count(),
             // Companies with no address cannot be contacted at all, which is
             // usually a bigger constraint on outreach than anything in the app.

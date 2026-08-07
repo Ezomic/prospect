@@ -18,6 +18,9 @@ class FollowUpController extends Controller
             ->withMax('letters as last_contact_at', 'sent_at')
             ->whereNotNull('follow_up_at')
             ->where('status', '!=', CompanyStatus::Closed)
+            // A company that asked not to be contacted should not resurface as
+            // a reminder to contact it.
+            ->where('do_not_contact', false)
             ->orderBy('follow_up_at')
             ->orderBy('id')
             ->paginate(25)

@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('companies', CompanyController::class);
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');
+    Route::patch('companies/{company}/do-not-contact', [CompanyController::class, 'doNotContact'])->name('companies.do-not-contact');
     Route::patch('companies/{company}/follow-up', [CompanyController::class, 'followUp'])->name('companies.follow-up');
 
     Route::post('companies/{company}/letters', [LetterController::class, 'store'])->name('letters.store');

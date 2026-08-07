@@ -23,6 +23,9 @@ class DashboardController extends Controller
                 ->whereDate('follow_up_at', '<=', today())
                 ->where('status', '!=', CompanyStatus::Closed)
                 ->count(),
+            // Companies with no address cannot be contacted at all, which is
+            // usually a bigger constraint on outreach than anything in the app.
+            'missingEmail' => Company::query()->whereNull('email')->count(),
         ]);
     }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { BellRing, Building2, ChevronRight } from '@lucide/vue';
+import { BellRing, Building2, ChevronRight, MailX } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Card } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -12,6 +12,7 @@ defineProps<{
     total: number;
     stats: { value: CompanyStatus; label: string; count: number }[];
     followUpsDue: number;
+    missingEmail: number;
 }>();
 
 defineOptions({
@@ -61,6 +62,29 @@ const dotColors: Record<CompanyStatus, string> = {
                                     : 'companies need'
                             }}
                             a follow-up.
+                        </p>
+                    </div>
+                </div>
+                <ChevronRight class="size-4 text-muted-foreground" />
+            </Card>
+        </Link>
+
+        <Link
+            v-if="missingEmail > 0"
+            :href="companiesIndex({ query: { missing_email: 1 } })"
+            class="group"
+        >
+            <Card
+                class="flex items-center justify-between gap-4 p-5 transition-colors group-hover:border-primary/50"
+            >
+                <div class="flex items-center gap-3">
+                    <MailX class="size-5 text-muted-foreground" />
+                    <div>
+                        <p class="text-sm font-medium">No email address</p>
+                        <p class="text-sm text-muted-foreground">
+                            {{ missingEmail }}
+                            {{ missingEmail === 1 ? 'company' : 'companies' }}
+                            cannot be contacted until an address is filled in.
                         </p>
                     </div>
                 </div>

@@ -22,6 +22,7 @@ class CompanyController extends Controller
         $status = $request->string('status')->toString() ?: null;
         $sort = $request->sort();
         $direction = $request->direction();
+        $missingEmail = $request->boolean('missing_email');
 
         $companies = Company::query()
             ->select(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'source', 'lead_score', 'do_not_contact'])
@@ -33,6 +34,7 @@ class CompanyController extends Controller
                 ->orWhere('industry', 'like', "%{$search}%")
             ))
             ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($missingEmail, fn (Builder $query) => $query->whereNull('email'))
             ->orderBy(IndexCompanyRequest::SORTABLE[$sort], $direction)
             // A stable tie-break, so paging through equal values cannot repeat
             // or skip a row.
@@ -47,7 +49,9 @@ class CompanyController extends Controller
                 'status' => $status,
                 'sort' => $sort,
                 'direction' => $direction,
+                'missing_email' => $missingEmail,
             ],
+            'missingEmailCount' => Company::query()->whereNull('email')->count(),
             'statuses' => $this->statusOptions(),
         ]);
     }

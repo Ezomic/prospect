@@ -276,3 +276,41 @@ it('stores a null lead score when the field is left empty', function () {
 
     expect(Company::sole()->lead_score)->toBeNull();
 });
+
+it('filters to companies without an email address', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->create(['name' => 'Reachable BV', 'email' => 'info@acme.example']);
+    Company::factory()->create(['name' => 'Unreachable NV', 'email' => null]);
+
+    $this->get(route('companies.index', ['missing_email' => 1]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('companies.data', 1)
+            ->where('companies.data.0.name', 'Unreachable NV')
+            ->where('filters.missing_email', true)
+        );
+});
+
+it('reports how many companies have no email address', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->count(3)->create(['email' => null]);
+    Company::factory()->create(['email' => 'info@acme.example']);
+
+    $this->get(route('companies.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('missingEmailCount', 3)
+            ->has('companies.data', 4)
+        );
+});
+
+it('keeps the missing-email filter alongside a status filter', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->create(['status' => 'new', 'email' => null]);
+    Company::factory()->create(['status' => 'sent', 'email' => null]);
+    Company::factory()->create(['status' => 'new', 'email' => 'info@acme.example']);
+
+    $this->get(route('companies.index', ['missing_email' => 1, 'status' => 'new']))
+        ->assertInertia(fn (Assert $page) => $page->has('companies.data', 1));
+});

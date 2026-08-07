@@ -33,7 +33,7 @@ it('shows total and per-status company counts on the dashboard', function () {
         );
 });
 
-it('counts every status in a single grouped query', function () {
+it('keeps the dashboard to one query per figure it shows', function () {
     $this->actingAs(User::factory()->create());
 
     Company::factory()->count(2)->create(['status' => 'new']);
@@ -48,8 +48,9 @@ it('counts every status in a single grouped query', function () {
 
     $this->get(route('dashboard'))->assertOk();
 
-    // One grouped aggregate for the status counts, one for the follow-ups due.
-    expect($queries)->toBe(2);
+    // One grouped aggregate for the status counts, one for the follow-ups due,
+    // one for the companies with no email address.
+    expect($queries)->toBe(3);
 });
 
 it('reports zero for every status when there are no companies', function () {
@@ -62,4 +63,14 @@ it('reports zero for every status when there are no companies', function () {
             ->has('stats', 5)
             ->where('stats.0.count', 0)
         );
+});
+
+it('counts companies with no email address on the dashboard', function () {
+    $this->actingAs(User::factory()->create());
+
+    Company::factory()->count(2)->create(['email' => null]);
+    Company::factory()->create(['email' => 'info@acme.example']);
+
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('missingEmail', 2));
 });

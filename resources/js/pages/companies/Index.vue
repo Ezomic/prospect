@@ -7,6 +7,7 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronUp,
+    MailX,
     Pencil,
     Plus,
     Search,
@@ -60,7 +61,9 @@ const props = defineProps<{
         status: CompanyStatus | null;
         sort: CompanySort;
         direction: 'asc' | 'desc';
+        missing_email: boolean;
     };
+    missingEmailCount: number;
     statuses: CompanyStatusOption[];
 }>();
 
@@ -77,6 +80,7 @@ defineOptions({
 
 const search = ref(props.filters.search ?? '');
 const status = ref<CompanyStatus | 'all'>(props.filters.status ?? 'all');
+const missingEmail = ref(props.filters.missing_email);
 
 const query = (
     overrides: Record<string, string | number | undefined> = {},
@@ -85,6 +89,7 @@ const query = (
     status: status.value === 'all' ? undefined : status.value,
     sort: props.filters.sort === 'name' ? undefined : props.filters.sort,
     direction: props.filters.direction === 'asc' ? undefined : 'desc',
+    missing_email: missingEmail.value ? 1 : undefined,
     ...overrides,
 });
 
@@ -99,7 +104,9 @@ const visit = (overrides: Record<string, string | number | undefined> = {}) => {
 // Changing a filter invalidates the current page number.
 const applyFilters = () => visit({ page: undefined });
 
-watchDebounced([search, status], applyFilters, { debounce: 300 });
+watchDebounced([search, status, missingEmail], applyFilters, {
+    debounce: 300,
+});
 
 const columns: { key: CompanySort; label: string }[] = [
     { key: 'name', label: 'Name' },
@@ -121,12 +128,13 @@ const formatDate = (value: string | null | undefined) =>
     value ? new Date(value).toLocaleDateString() : '-';
 
 const hasActiveFilters = computed(
-    () => search.value !== '' || status.value !== 'all',
+    () => search.value !== '' || status.value !== 'all' || missingEmail.value,
 );
 
 const clearFilters = () => {
     search.value = '';
     status.value = 'all';
+    missingEmail.value = false;
 };
 
 const websiteUrl = (website: string) =>
@@ -214,6 +222,16 @@ const confirmDelete = () => {
                     </SelectItem>
                 </SelectContent>
             </Select>
+
+            <Button
+                v-if="missingEmailCount > 0 || missingEmail"
+                :variant="missingEmail ? 'default' : 'outline'"
+                :aria-pressed="missingEmail"
+                @click="missingEmail = !missingEmail"
+            >
+                <MailX />
+                No email ({{ missingEmailCount }})
+            </Button>
 
             <Button
                 v-if="hasActiveFilters"

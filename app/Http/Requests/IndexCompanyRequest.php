@@ -31,6 +31,7 @@ class IndexCompanyRequest extends FormRequest
             'sort' => ['nullable', Rule::in(array_keys(self::SORTABLE))],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
             'page' => ['nullable', 'integer', 'min:1'],
+            'missing_email' => ['nullable', 'boolean'],
         ];
     }
 

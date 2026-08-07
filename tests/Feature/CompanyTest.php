@@ -252,3 +252,27 @@ it('rejects a sort column that is not on the allowlist', function () {
     $this->get(route('companies.index', ['direction' => 'drop table']))
         ->assertSessionHasErrors('direction');
 });
+
+it('stores a lead score sent as a number', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => 'Acme BV',
+        'status' => 'new',
+        'lead_score' => 8,
+    ])->assertRedirect(route('companies.index'));
+
+    expect(Company::sole()->lead_score)->toBe(8);
+});
+
+it('stores a null lead score when the field is left empty', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('companies.store'), [
+        'name' => 'Acme BV',
+        'status' => 'new',
+        'lead_score' => null,
+    ])->assertRedirect(route('companies.index'));
+
+    expect(Company::sole()->lead_score)->toBeNull();
+});

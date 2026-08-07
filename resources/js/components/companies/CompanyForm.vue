@@ -34,13 +34,18 @@ const form = useForm({
     source: props.company?.source ?? '',
     contact_role: props.company?.contact_role ?? '',
     linkedin_url: props.company?.linkedin_url ?? '',
-    lead_score: props.company?.lead_score ?? null,
+    // Kept as the string the input actually holds, converted on submit. The
+    // shadcn Input models string | number and is not ours to widen.
+    lead_score: props.company?.lead_score?.toString() ?? '',
     first_contact_channel: props.company?.first_contact_channel ?? '',
     do_not_contact: props.company?.do_not_contact ?? false,
 });
 
 const submit = () => {
-    form.submit(props.company ? update(props.company.id) : store());
+    form.transform((data) => ({
+        ...data,
+        lead_score: data.lead_score === '' ? null : Number(data.lead_score),
+    })).submit(props.company ? update(props.company.id) : store());
 };
 </script>
 

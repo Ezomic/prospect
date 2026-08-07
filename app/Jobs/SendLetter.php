@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Enums\LetterStatus;
 use App\Models\Letter;
-use App\Models\User;
 use App\Services\Mail\LetterSender;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,16 +19,13 @@ class SendLetter implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(
-        public Letter $letter,
-        public User $user,
-    ) {}
+    public function __construct(public Letter $letter) {}
 
     public function handle(LetterSender $sender): void
     {
         $this->letter->load('company');
 
-        $sender->deliver($this->letter, $this->user);
+        $sender->deliver($this->letter);
     }
 
     /**

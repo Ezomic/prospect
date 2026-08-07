@@ -7,7 +7,6 @@ use App\Enums\LetterStatus;
 use App\Jobs\AppendLetterToSentFolder;
 use App\Mail\OutreachMail;
 use App\Models\Letter;
-use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -17,9 +16,8 @@ use Symfony\Component\Mime\Email;
 
 /**
  * Sends an open-aanbod letter as an email from the configured outreach
- * account, with the letter PDF and the user's CV attached. After sending it
- * marks the letter and company as sent, and queues the message to be filed in
- * the IMAP Sent folder.
+ * account, with the letter PDF attached. After sending it marks the letter and
+ * company as sent, and queues the message to be filed in the IMAP Sent folder.
  */
 class LetterSender
 {
@@ -29,7 +27,7 @@ class LetterSender
      * job runs it again: between queueing and running, the day's limit can
      * fill up or the company can be marked do not contact.
      */
-    public function guard(Letter $letter, User $user): void
+    public function guard(Letter $letter): void
     {
         if ($letter->sent_at !== null) {
             throw new RuntimeException('This letter has already been sent.');
@@ -50,33 +48,21 @@ class LetterSender
         }
 
         $this->guardDailyLimit();
-
-        $this->cvPath($user);
-    }
-
-    private function cvPath(User $user): string
-    {
-        if ($user->cv_path === null || ! Storage::disk('local')->exists($user->cv_path)) {
-            throw new RuntimeException('No CV is available to attach.');
-        }
-
-        return $user->cv_path;
     }
 
     /**
      * Renders and delivers the letter. Runs on the queue: dompdf, SMTP and the
      * Sent-folder append are all far too slow to sit in a web request.
      */
-    public function deliver(Letter $letter, User $user): void
+    public function deliver(Letter $letter): void
     {
-        $this->guard($letter, $user);
+        $this->guard($letter);
 
         $pdf = Pdf::loadView('pdf.letter', ['letter' => $letter])->output();
-        $cv = Storage::disk('local')->get($this->cvPath($user));
 
         $captured = null;
 
-        $mail = (new OutreachMail($letter, $pdf, (string) $cv, $user->cv_original_name ?? 'cv.pdf'))
+        $mail = (new OutreachMail($letter, $pdf))
             ->withSymfonyMessage(function (Email $message) use (&$captured) {
                 $captured = $message;
             });

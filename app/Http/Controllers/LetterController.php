@@ -8,11 +8,9 @@ use App\Http\Requests\UpdateLetterRequest;
 use App\Jobs\SendLetter;
 use App\Models\Company;
 use App\Models\Letter;
-use App\Models\User;
 use App\Services\Mail\LetterSender;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -61,17 +59,14 @@ class LetterController extends Controller
         return to_route('companies.show', $letter->company_id);
     }
 
-    public function send(Request $request, Letter $letter, LetterSender $sender): RedirectResponse
+    public function send(Letter $letter, LetterSender $sender): RedirectResponse
     {
         $letter->load('company');
-
-        $user = $request->user();
-        abort_unless($user instanceof User, 403);
 
         // Guarded here rather than only in the job so a refusal is still an
         // immediate, visible answer instead of a silent failure on the queue.
         try {
-            $sender->guard($letter, $user);
+            $sender->guard($letter);
         } catch (RuntimeException $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
 
@@ -80,7 +75,7 @@ class LetterController extends Controller
 
         $letter->forceFill(['status' => LetterStatus::Sending, 'send_error' => null])->save();
 
-        SendLetter::dispatch($letter, $user);
+        SendLetter::dispatch($letter);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter queued for sending.')]);
 

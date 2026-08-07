@@ -15,26 +15,33 @@ use App\Services\Mail\IncomingMessage;
  */
 class ProcessIncomingMail
 {
-    public function handle(IncomingMessage $message): void
+    /**
+     * Returns whether the message was acted on, which decides whether it is
+     * marked read. An auto-reply counts as not acted on deliberately: it is a
+     * real message a human may want to see, and it changes nothing here.
+     */
+    public function handle(IncomingMessage $message): bool
     {
         if ($message->isBounce) {
+            $acted = false;
+
             foreach ($message->failedRecipients as $email) {
-                $this->transition($email, CompanyStatus::Bounced, 'bounced_at');
+                $acted = $this->transition($email, CompanyStatus::Bounced, 'bounced_at') || $acted;
             }
 
-            return;
+            return $acted;
         }
 
         // An out-of-office notice is not a company answering. Checked after the
         // bounce branch because delivery reports are automatic messages too.
         if ($message->isAutoReply) {
-            return;
+            return false;
         }
 
-        $this->transition($message->from, CompanyStatus::Replied, 'replied_at');
+        return $this->transition($message->from, CompanyStatus::Replied, 'replied_at');
     }
 
-    private function transition(string $email, CompanyStatus $status, string $stampColumn): void
+    private function transition(string $email, CompanyStatus $status, string $stampColumn): bool
     {
         $company = Company::query()
             ->where('email', $email)
@@ -42,12 +49,14 @@ class ProcessIncomingMail
             ->first();
 
         if ($company === null) {
-            return;
+            return false;
         }
 
         $company->forceFill([
             'status' => $status,
             $stampColumn => $company->{$stampColumn} ?? now(),
         ])->save();
+
+        return true;
     }
 }

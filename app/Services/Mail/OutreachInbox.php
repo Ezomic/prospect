@@ -7,8 +7,8 @@ use Webklex\PHPIMAP\Message;
 
 /**
  * IMAP-backed inbox for the outreach account. Connects with the
- * services.outreach_imap credentials, reads unseen INBOX messages and marks
- * each Seen once handled so it is processed only once.
+ * services.outreach_imap credentials, reads unread INBOX messages and marks
+ * Seen only the ones the handler acted on, so unrelated mail is left alone.
  */
 class OutreachInbox implements Inbox
 {
@@ -52,7 +52,9 @@ class OutreachInbox implements Inbox
 
         /** @var Message $message */
         foreach ($messages as $message) {
-            $handler($this->normalize($message));
+            if ($handler($this->normalize($message)) !== true) {
+                continue;
+            }
 
             try {
                 $message->setFlag('Seen');

@@ -54,6 +54,10 @@ it('groups each reminder as overdue, today or upcoming', function () {
 });
 
 it('reports when the last letter went out', function () {
+    // Frozen: the assertion recomputes now(), so without this the test fails
+    // whenever the second ticks over between creating the letter and asserting.
+    $this->freezeTime();
+
     $this->actingAs(User::factory()->create());
 
     $company = Company::factory()->create(['status' => 'sent', 'follow_up_at' => today()]);

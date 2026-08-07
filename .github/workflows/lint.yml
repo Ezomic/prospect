@@ -59,3 +59,8 @@ jobs:
 
       - name: Lint frontend
         run: npm run lint:check
+
+      # Runs here rather than in the test workflow because it needs the
+      # Wayfinder route files this job already generates.
+      - name: Check frontend types
+        run: npm run types:check

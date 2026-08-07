@@ -35,6 +35,7 @@ class LetterController extends Controller
             'letter' => $letter,
             'statuses' => $this->statusOptions(),
             'duplicateCompanies' => $this->companiesSharingEmail($letter),
+            'releasable' => $this->isStuck($letter),
         ]);
     }
 
@@ -73,7 +74,11 @@ class LetterController extends Controller
             return back();
         }
 
-        $letter->forceFill(['status' => LetterStatus::Sending, 'send_error' => null])->save();
+        $letter->forceFill([
+            'status' => LetterStatus::Sending,
+            'queued_at' => now(),
+            'send_error' => null,
+        ])->save();
 
         SendLetter::dispatch($letter);
 
@@ -100,6 +105,43 @@ class LetterController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter deleted.')]);
 
         return to_route('companies.show', $companyId);
+    }
+
+    /**
+     * Frees a letter that has sat in Sending long enough that no job can still
+     * be working on it. A worker killed mid-send leaves no failed job behind,
+     * so SendLetter::failed() never runs and nothing else would release it.
+     */
+    public function release(Letter $letter): RedirectResponse
+    {
+        if (! $this->isStuck($letter)) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('This letter is not stuck.')]);
+
+            return back();
+        }
+
+        $letter->forceFill([
+            'status' => LetterStatus::Ready,
+            'queued_at' => null,
+            'send_error' => __('The send never completed and was released by hand.'),
+        ])->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter released back to ready.')]);
+
+        return back();
+    }
+
+    private function isStuck(Letter $letter): bool
+    {
+        if ($letter->status !== LetterStatus::Sending || $letter->sent_at !== null) {
+            return false;
+        }
+
+        $minutes = config('outreach.stuck_after_minutes');
+        $minutes = is_int($minutes) && $minutes > 0 ? $minutes : 5;
+
+        return $letter->queued_at === null
+            || $letter->queued_at->addMinutes($minutes)->isPast();
     }
 
     /**

@@ -13,6 +13,7 @@ export type LetterSummary = {
     subject: string;
     status: LetterStatus;
     generated_at: string | null;
+    queued_at: string | null;
     sent_at: string | null;
 };
 

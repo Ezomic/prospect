@@ -72,6 +72,7 @@ class LetterSender
         $letter->forceFill([
             'status' => LetterStatus::Sent,
             'sent_at' => now(),
+            'queued_at' => null,
             'send_error' => null,
         ])->save();
 

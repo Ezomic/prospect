@@ -17,4 +17,12 @@ return [
 
     'daily_send_limit' => (int) env('OUTREACH_DAILY_SEND_LIMIT', 20),
 
+    /*
+    | How long a letter may sit in Sending before it is treated as stuck and
+    | can be released back to Ready by hand. A worker killed mid-send (a deploy
+    | restart, or queue:work recycling on --max-time) leaves no failed job
+    | behind, so nothing else would ever free it.
+    */
+    'stuck_after_minutes' => (int) env('OUTREACH_STUCK_AFTER_MINUTES', 5),
+
 ];

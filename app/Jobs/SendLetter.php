@@ -43,6 +43,7 @@ class SendLetter implements ShouldQueue
 
         $letter->forceFill([
             'status' => LetterStatus::Ready,
+            'queued_at' => null,
             'send_error' => $exception?->getMessage() ?? 'The letter could not be sent.',
         ])->save();
     }

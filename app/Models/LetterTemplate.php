@@ -28,7 +28,7 @@ class LetterTemplate extends Model
      * @var array<string, string>
      */
     public const DEFAULTS = [
-        'subject' => 'Open sollicitatie: freelance softwareontwikkeling voor {{ company }}',
+        'subject' => 'Open aanbod: freelance softwareontwikkeling voor {{ company }}',
         'body' => <<<'LETTER'
         {{ greeting }},
 
@@ -43,11 +43,11 @@ class LetterTemplate extends Model
         Robbin Thijssen
         Thijssen Software
         LETTER,
-        'email_subject' => 'Open sollicitatie - Robbin Thijssen (Thijssen Software)',
+        'email_subject' => 'Open aanbod - Robbin Thijssen (Thijssen Software)',
         'email_body' => <<<'EMAIL'
         {{ greeting }},
 
-        Bijgaand stuur ik u mijn open sollicitatie als freelance softwareontwikkelaar. In de brief licht ik toe wat ik voor {{ company }} kan betekenen, en op thijssensoftware.nl vindt u een overzicht van mijn werk.
+        Bijgaand stuur ik u mijn open aanbod als freelance softwareontwikkelaar. In de brief licht ik toe wat ik voor {{ company }} kan betekenen, en op thijssensoftware.nl vindt u een overzicht van mijn werk.
 
         Ik hoor graag of er mogelijkheden zijn om kennis te maken.
 

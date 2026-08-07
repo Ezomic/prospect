@@ -28,6 +28,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $lead_score
  * @property string|null $first_contact_channel
  * @property bool $do_not_contact
+ * @property Carbon|null $do_not_contact_at
+ * @property string|null $do_not_contact_reason
  * @property Carbon|null $replied_at
  * @property Carbon|null $bounced_at
  * @property Carbon|null $follow_up_at
@@ -35,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Letter> $letters
  */
-#[Fillable(['name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'notes', 'source', 'contact_role', 'linkedin_url', 'lead_score', 'first_contact_channel', 'do_not_contact'])]
+#[Fillable(['name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'notes', 'source', 'contact_role', 'linkedin_url', 'lead_score', 'first_contact_channel'])]
 class Company extends Model
 {
     /** @use HasFactory<CompanyFactory> */
@@ -50,6 +52,7 @@ class Company extends Model
             'status' => CompanyStatus::class,
             'lead_score' => 'integer',
             'do_not_contact' => 'boolean',
+            'do_not_contact_at' => 'datetime',
             'replied_at' => 'datetime',
             'bounced_at' => 'datetime',
             'follow_up_at' => 'date',

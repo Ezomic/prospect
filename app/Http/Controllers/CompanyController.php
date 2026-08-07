@@ -8,6 +8,7 @@ use App\Http\Requests\ScheduleFollowUpRequest;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
 use App\Http\Requests\UpdateCompanyStatusRequest;
+use App\Http\Requests\UpdateDoNotContactRequest;
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -123,6 +124,36 @@ class CompanyController extends Controller
         $company->forceFill(['follow_up_at' => $request->validated('follow_up_at')])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Follow-up updated.')]);
+
+        return back();
+    }
+
+    /**
+     * Terminal by design: a company that has asked not to be contacted drops
+     * out of follow-ups as well as sends, so the reminder cannot quietly bring
+     * it back around later.
+     */
+    public function doNotContact(UpdateDoNotContactRequest $request, Company $company): RedirectResponse
+    {
+        $flagged = $request->boolean('do_not_contact');
+
+        $company->forceFill($flagged ? [
+            'do_not_contact' => true,
+            'do_not_contact_at' => now(),
+            'do_not_contact_reason' => $request->string('reason')->toString() ?: null,
+            'follow_up_at' => null,
+        ] : [
+            'do_not_contact' => false,
+            'do_not_contact_at' => null,
+            'do_not_contact_reason' => null,
+        ])->save();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $flagged
+                ? __('Marked do not contact.')
+                : __('Contact allowed again.'),
+        ]);
 
         return back();
     }

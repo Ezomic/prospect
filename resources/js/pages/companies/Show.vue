@@ -16,8 +16,10 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     destroy,
+    doNotContact as updateDoNotContact,
     edit,
     followUp as scheduleFollowUp,
     index,
@@ -116,6 +118,29 @@ const clearFollowUp = () => {
     followUpDate.value = '';
     saveFollowUp();
 };
+
+const optOutOpen = ref(false);
+const optOutReason = ref('');
+const savingOptOut = ref(false);
+
+const setDoNotContact = (flagged: boolean, reason = '') => {
+    router.patch(
+        updateDoNotContact(props.company.id).url,
+        { do_not_contact: flagged, reason: reason || null },
+        {
+            preserveScroll: true,
+            onStart: () => (savingOptOut.value = true),
+            onFinish: () => (savingOptOut.value = false),
+            onSuccess: () => {
+                optOutOpen.value = false;
+                optOutReason.value = '';
+            },
+        },
+    );
+};
+
+const formatDateTime = (value: string | null) =>
+    value ? new Date(value).toLocaleString() : '-';
 </script>
 
 <template>
@@ -252,6 +277,48 @@ const clearFollowUp = () => {
                 </dl>
 
                 <div class="flex flex-col gap-2 border-t pt-4">
+                    <div
+                        v-if="company.do_not_contact"
+                        class="flex flex-col gap-2 rounded-md border border-destructive/50 px-3 py-2"
+                    >
+                        <p class="text-sm font-medium text-destructive">
+                            Marked do not contact on
+                            {{ formatDateTime(company.do_not_contact_at) }}
+                        </p>
+                        <p
+                            v-if="company.do_not_contact_reason"
+                            class="text-sm text-muted-foreground"
+                        >
+                            {{ company.do_not_contact_reason }}
+                        </p>
+                        <div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                :disabled="savingOptOut"
+                                @click="setDoNotContact(false)"
+                            >
+                                Allow contact again
+                            </Button>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            class="text-destructive hover:text-destructive"
+                            @click="optOutOpen = true"
+                        >
+                            <Ban />
+                            Mark do not contact
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    v-if="!company.do_not_contact"
+                    class="flex flex-col gap-2 border-t pt-4"
+                >
                     <Label for="follow_up">Follow-up reminder</Label>
                     <div class="flex flex-wrap items-center gap-2">
                         <input
@@ -335,6 +402,39 @@ const clearFollowUp = () => {
             </CardContent>
         </Card>
     </div>
+
+    <Dialog v-model:open="optOutOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Mark do not contact?</DialogTitle>
+                <DialogDescription>
+                    {{ company.name }} will be refused for sending and dropped
+                    from follow-ups, so no reminder can bring it back around.
+                </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-2">
+                <Label for="opt_out_reason">Reason (optional)</Label>
+                <Textarea
+                    id="opt_out_reason"
+                    v-model="optOutReason"
+                    placeholder="Asked by email to be removed"
+                />
+            </div>
+            <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                    <Button variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button
+                    variant="destructive"
+                    :disabled="savingOptOut"
+                    @click="setDoNotContact(true, optOutReason)"
+                >
+                    <Ban />
+                    Mark do not contact
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="deleteOpen">
         <DialogContent>

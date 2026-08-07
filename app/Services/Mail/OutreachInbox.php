@@ -2,13 +2,19 @@
 
 namespace App\Services\Mail;
 
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use Webklex\PHPIMAP\ClientManager;
 use Webklex\PHPIMAP\Message;
 
 /**
- * IMAP-backed inbox for the outreach account. Connects with the
- * services.outreach_imap credentials, reads unread INBOX messages and marks
- * Seen only the ones the handler acted on, so unrelated mail is left alone.
+ * IMAP-backed inbox for outreach. Reads unread INBOX messages from every
+ * configured mailbox and marks Seen only the ones the handler acted on, so
+ * unrelated mail is left alone.
+ *
+ * More than one mailbox because outreach predates this app: letters were sent
+ * by hand from another address, and replies to those land somewhere the app
+ * would otherwise never open.
  */
 class OutreachInbox implements Inbox
 {
@@ -16,28 +22,86 @@ class OutreachInbox implements Inbox
 
     public function configured(): bool
     {
-        return ! empty(config('services.outreach_imap.host'));
+        return $this->mailboxes() !== [];
     }
 
     public function eachUnseen(callable $handler): void
     {
-        if (! $this->configured()) {
-            return;
+        foreach ($this->mailboxes() as $mailbox) {
+            try {
+                $this->readMailbox($mailbox, $handler);
+            } catch (Throwable $e) {
+                // One unreachable mailbox must not stop the others: the whole
+                // point of several is that each is read independently.
+                Log::warning('Could not poll outreach mailbox.', [
+                    'host' => $mailbox['host'],
+                    'username' => $mailbox['username'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Normalised so the rest of the class works with known types rather than
+     * whatever shape the config happens to hold. An entry with no host is not
+     * a mailbox, it is an unfilled slot in .env.
+     *
+     * @return list<array{host: string, port: int|null, encryption: string|null, username: string|null, password: string|null}>
+     */
+    private function mailboxes(): array
+    {
+        $mailboxes = config('services.outreach_mailboxes');
+
+        if (! is_array($mailboxes)) {
+            return [];
         }
 
-        $config = config('services.outreach_imap');
+        $configured = [];
 
-        if (! is_array($config)) {
-            return;
+        foreach ($mailboxes as $mailbox) {
+            if (! is_array($mailbox)) {
+                continue;
+            }
+
+            $host = $mailbox['host'] ?? null;
+
+            if (! is_string($host) || $host === '') {
+                continue;
+            }
+
+            $port = $mailbox['port'] ?? null;
+
+            $configured[] = [
+                'host' => $host,
+                'port' => is_numeric($port) ? (int) $port : null,
+                'encryption' => $this->stringOrNull($mailbox['encryption'] ?? null),
+                'username' => $this->stringOrNull($mailbox['username'] ?? null),
+                'password' => $this->stringOrNull($mailbox['password'] ?? null),
+            ];
         }
 
+        return $configured;
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @param  array{host: string, port: int|null, encryption: string|null, username: string|null, password: string|null}  $mailbox
+     * @param  callable(IncomingMessage): bool  $handler
+     */
+    private function readMailbox(array $mailbox, callable $handler): void
+    {
         $client = (new ClientManager)->make([
-            'host' => $config['host'] ?? null,
-            'port' => $config['port'] ?? null,
-            'encryption' => $config['encryption'] ?? null,
+            'host' => $mailbox['host'],
+            'port' => $mailbox['port'],
+            'encryption' => $mailbox['encryption'],
             'validate_cert' => true,
-            'username' => $config['username'] ?? null,
-            'password' => $config['password'] ?? null,
+            'username' => $mailbox['username'],
+            'password' => $mailbox['password'],
             'timeout' => 30,
         ]);
         $client->connect();
@@ -48,17 +112,15 @@ class OutreachInbox implements Inbox
             return;
         }
 
-        $messages = $inbox->query()->unseen()->get();
-
         /** @var Message $message */
-        foreach ($messages as $message) {
+        foreach ($inbox->query()->unseen()->get() as $message) {
             if ($handler($this->normalize($message)) !== true) {
                 continue;
             }
 
             try {
                 $message->setFlag('Seen');
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // Best-effort: failing to flag must not stop the run.
             }
         }

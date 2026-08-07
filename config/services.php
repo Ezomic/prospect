@@ -43,9 +43,9 @@ return [
         'portal_cache_ttl' => (int) env('THIJSSENSOFTWARE_ID_PORTAL_TTL', 300),
     ],
 
-    // IMAP for the outreach sender (info@thijssensoftware.nl), used to append
-    // sent messages to the Sent folder. Optional: when the host is unset the
-    // append is skipped and the send still succeeds.
+    // IMAP for the outreach sender, used to append sent messages to the Sent
+    // folder. Optional: when the host is unset the append is skipped and the
+    // send still succeeds. This is the account letters are sent from.
     'outreach_imap' => [
         'host' => env('OUTREACH_IMAP_HOST'),
         'port' => (int) env('OUTREACH_IMAP_PORT', 993),
@@ -53,5 +53,21 @@ return [
         'username' => env('OUTREACH_IMAP_USERNAME'),
         'password' => env('OUTREACH_IMAP_PASSWORD'),
     ],
+
+    // Every mailbox outreach:poll reads. More than one because outreach predates
+    // this app: mail sent by hand from another address gets its replies there,
+    // and a mailbox nothing reads is a mailbox whose replies are lost. The
+    // sending account above is the first entry; add others as _2_, _3_.
+    'outreach_mailboxes' => collect(['', '2_', '3_'])
+        ->map(fn (string $slot) => [
+            'host' => env("OUTREACH_IMAP_{$slot}HOST"),
+            'port' => (int) env("OUTREACH_IMAP_{$slot}PORT", 993),
+            'encryption' => env("OUTREACH_IMAP_{$slot}ENCRYPTION", 'ssl'),
+            'username' => env("OUTREACH_IMAP_{$slot}USERNAME"),
+            'password' => env("OUTREACH_IMAP_{$slot}PASSWORD"),
+        ])
+        ->filter(fn (array $mailbox) => ! empty($mailbox['host']))
+        ->values()
+        ->all(),
 
 ];

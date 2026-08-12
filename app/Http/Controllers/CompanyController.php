@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Companies\BuildCompanyTimeline;
 use App\Enums\CompanyStatus;
+use App\Enums\InteractionKind;
 use App\Http\Requests\IndexCompanyRequest;
 use App\Http\Requests\ScheduleFollowUpRequest;
 use App\Http\Requests\StoreCompanyRequest;
@@ -57,12 +59,18 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function show(Company $company): Response
+    public function show(Company $company, BuildCompanyTimeline $timeline): Response
     {
+        $company->load(['letters', 'inboundMessages', 'interactions']);
+
         return Inertia::render('companies/Show', [
             'company' => $company,
             'letters' => $company->letters()->get(['id', 'company_id', 'subject', 'status', 'generated_at', 'sent_at']),
-            'messages' => $company->inboundMessages()->get(),
+            'timeline' => $timeline->handle($company),
+            'interactionKinds' => array_map(
+                fn (InteractionKind $kind) => ['value' => $kind->value, 'label' => $kind->label()],
+                InteractionKind::cases(),
+            ),
         ]);
     }
 

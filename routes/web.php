@@ -4,6 +4,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FollowUpController;
+use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\LetterController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -24,6 +25,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');
     Route::patch('companies/{company}/do-not-contact', [CompanyController::class, 'doNotContact'])->name('companies.do-not-contact');
     Route::patch('companies/{company}/follow-up', [CompanyController::class, 'followUp'])->name('companies.follow-up');
+
+    Route::post('companies/{company}/interactions', [InteractionController::class, 'store'])->name('interactions.store');
+    Route::delete('interactions/{interaction}', [InteractionController::class, 'destroy'])->name('interactions.destroy');
 
     Route::post('companies/{company}/letters', [LetterController::class, 'store'])->name('letters.store');
     Route::post('letters/{letter}/send', [LetterController::class, 'send'])->name('letters.send');

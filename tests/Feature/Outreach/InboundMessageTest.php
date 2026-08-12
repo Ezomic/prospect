@@ -116,24 +116,32 @@ it('stores nothing for an out-of-office, which changes nothing', function () {
 it('shows stored messages on the company page, newest first', function () {
     $this->actingAs(User::factory()->create());
 
-    $company = Company::factory()->create();
+    $company = Company::factory()->create(['created_at' => now()->subYear()]);
     InboundMessage::factory()->create([
         'company_id' => $company->id,
         'subject' => 'Ouder bericht',
+        'body' => 'Oud.',
         'received_at' => now()->subWeek(),
     ]);
     InboundMessage::factory()->create([
         'company_id' => $company->id,
         'subject' => 'Nieuwer bericht',
+        'body' => 'Nieuw.',
         'received_at' => now()->subDay(),
     ]);
 
+    // Surfaced through the timeline since PROS-45; the guarantee is unchanged.
     $this->get(route('companies.show', $company))
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('messages', 2)
-            ->where('messages.0.subject', 'Nieuwer bericht')
-            ->where('messages.1.subject', 'Ouder bericht')
-        );
+        ->assertInertia(function (Assert $page) {
+            $replies = array_values(array_filter(
+                $page->toArray()['props']['timeline'],
+                fn ($entry) => $entry['kind'] === 'reply',
+            ));
+
+            expect($replies)->toHaveCount(2)
+                ->and($replies[0]['detail'])->toContain('Nieuwer bericht')
+                ->and($replies[1]['detail'])->toContain('Ouder bericht');
+        });
 });
 
 it('goes when the company does', function () {

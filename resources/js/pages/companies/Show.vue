@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
@@ -15,7 +15,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import InputError from '@/components/InputError.vue';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
     destroy,
@@ -27,17 +35,20 @@ import {
 } from '@/routes/companies';
 import { store as generateLetterRoute } from '@/routes/letters';
 import { edit as editLetter } from '@/routes/letters';
+import { store as storeInteraction } from '@/routes/interactions';
+import { destroy as destroyInteraction } from '@/routes/interactions';
 import type {
     Company,
     CompanyStatus,
-    InboundMessage,
     LetterSummary,
+    TimelineEntry,
 } from '@/types';
 
 const props = defineProps<{
     company: Company;
     letters: LetterSummary[];
-    messages: InboundMessage[];
+    timeline: TimelineEntry[];
+    interactionKinds: { value: string; label: string }[];
 }>();
 
 defineOptions({
@@ -147,6 +158,39 @@ const setDoNotContact = (flagged: boolean, reason = '') => {
 
 const formatDateTime = (value: string | null) =>
     value ? new Date(value).toLocaleString() : '-';
+
+const timelineDotClass = (kind: string) =>
+    ({
+        letter_sent: 'bg-primary',
+        letter_generated: 'bg-muted-foreground',
+        reply: 'bg-green-500',
+        bounce: 'bg-destructive',
+        do_not_contact: 'bg-destructive',
+        interaction: 'bg-amber-500',
+        added: 'bg-muted-foreground/50',
+    })[kind] ?? 'bg-muted-foreground';
+
+const interactionOpen = ref(false);
+
+const interactionForm = useForm({
+    kind: 'call',
+    occurred_at: new Date().toISOString().slice(0, 16),
+    summary: '',
+});
+
+const submitInteraction = () => {
+    interactionForm.post(storeInteraction(props.company.id).url, {
+        preserveScroll: true,
+        onSuccess: () => {
+            interactionForm.reset('summary');
+            interactionOpen.value = false;
+        },
+    });
+};
+
+const removeInteraction = (id: number) => {
+    router.delete(destroyInteraction(id).url, { preserveScroll: true });
+};
 </script>
 
 <template>
@@ -347,50 +391,79 @@ const formatDateTime = (value: string | null) =>
             </CardContent>
         </Card>
 
-        <Card v-if="messages.length > 0">
+        <Card>
             <CardContent class="flex flex-col gap-4">
-                <h2 class="text-sm text-muted-foreground">
-                    Replies and bounces
-                </h2>
-
-                <article
-                    v-for="message in messages"
-                    :key="message.id"
-                    class="flex flex-col gap-2 rounded-md border border-border p-3"
-                >
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span
-                            class="rounded-md px-2 py-0.5 text-xs font-medium"
-                            :class="
-                                message.kind === 'bounce'
-                                    ? 'border border-destructive/50 text-destructive'
-                                    : 'border border-border text-muted-foreground'
-                            "
-                        >
-                            {{ message.kind === 'bounce' ? 'Bounce' : 'Reply' }}
-                        </span>
-                        <span class="font-mono text-xs break-all">
-                            {{ message.from }}
-                        </span>
-                        <span class="ml-auto text-xs text-muted-foreground">
-                            {{ formatDateTime(message.received_at) }}
-                        </span>
-                    </div>
-
-                    <p v-if="message.subject" class="text-sm font-medium">
-                        {{ message.subject }}
-                    </p>
-
-                    <p
-                        v-if="message.body"
-                        class="max-h-72 overflow-y-auto text-sm whitespace-pre-line text-muted-foreground"
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-sm text-muted-foreground">Activity</h2>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        @click="interactionOpen = true"
                     >
-                        {{ message.body }}
-                    </p>
-                    <p v-else class="text-sm text-muted-foreground">
-                        No readable text in this message.
-                    </p>
-                </article>
+                        <Plus />
+                        Log interaction
+                    </Button>
+                </div>
+
+                <p
+                    v-if="timeline.length === 0"
+                    class="text-sm text-muted-foreground"
+                >
+                    Nothing has happened yet.
+                </p>
+
+                <ol v-else class="flex flex-col gap-4">
+                    <li
+                        v-for="(entry, index) in timeline"
+                        :key="`${entry.at}-${index}`"
+                        class="flex gap-3"
+                    >
+                        <div class="flex flex-col items-center">
+                            <span
+                                class="mt-1.5 size-2 shrink-0 rounded-full"
+                                :class="timelineDotClass(entry.kind)"
+                            />
+                            <span
+                                v-if="index < timeline.length - 1"
+                                class="w-px flex-1 bg-border"
+                            />
+                        </div>
+
+                        <div class="flex min-w-0 flex-1 flex-col gap-1 pb-1">
+                            <div class="flex flex-wrap items-baseline gap-2">
+                                <span class="text-sm font-medium">
+                                    {{ entry.title }}
+                                </span>
+                                <span class="text-xs text-muted-foreground">
+                                    {{ formatDateTime(entry.at) }}
+                                </span>
+                                <Link
+                                    v-if="entry.letter_id"
+                                    :href="editLetter(entry.letter_id)"
+                                    class="text-xs text-primary underline-offset-4 hover:underline"
+                                >
+                                    Open letter
+                                </Link>
+                                <button
+                                    v-if="entry.interaction_id"
+                                    type="button"
+                                    class="text-xs text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+                                    @click="
+                                        removeInteraction(entry.interaction_id)
+                                    "
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                            <p
+                                v-if="entry.detail"
+                                class="max-h-60 overflow-y-auto text-sm whitespace-pre-line text-muted-foreground"
+                            >
+                                {{ entry.detail }}
+                            </p>
+                        </div>
+                    </li>
+                </ol>
             </CardContent>
         </Card>
 
@@ -455,6 +528,77 @@ const formatDateTime = (value: string | null) =>
             </CardContent>
         </Card>
     </div>
+
+    <Dialog v-model:open="interactionOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Log an interaction</DialogTitle>
+                <DialogDescription>
+                    Something that happened with {{ company.name }}, recorded on
+                    the timeline.
+                </DialogDescription>
+            </DialogHeader>
+            <form
+                id="interaction-form"
+                class="grid gap-4"
+                @submit.prevent="submitInteraction"
+            >
+                <div class="grid gap-2">
+                    <Label for="interaction_kind">Kind</Label>
+                    <Select v-model="interactionForm.kind">
+                        <SelectTrigger id="interaction_kind" class="w-full">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="option in interactionKinds"
+                                :key="option.value"
+                                :value="option.value"
+                            >
+                                {{ option.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <InputError :message="interactionForm.errors.kind" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="interaction_at">When</Label>
+                    <input
+                        id="interaction_at"
+                        v-model="interactionForm.occurred_at"
+                        type="datetime-local"
+                        required
+                        class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    />
+                    <InputError :message="interactionForm.errors.occurred_at" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="interaction_summary">What happened</Label>
+                    <Textarea
+                        id="interaction_summary"
+                        v-model="interactionForm.summary"
+                        required
+                        placeholder="Gebeld met Jane, vraagt om een voorstel"
+                    />
+                    <InputError :message="interactionForm.errors.summary" />
+                </div>
+            </form>
+            <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                    <Button variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button
+                    type="submit"
+                    form="interaction-form"
+                    :disabled="interactionForm.processing"
+                >
+                    Log it
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="optOutOpen">
         <DialogContent>

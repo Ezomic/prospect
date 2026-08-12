@@ -43,3 +43,12 @@ export type InboundMessage = {
     body: string | null;
     received_at: string;
 };
+
+export type TimelineEntry = {
+    at: string;
+    kind: string;
+    title: string;
+    detail: string | null;
+    letter_id: number | null;
+    interaction_id: number | null;
+};

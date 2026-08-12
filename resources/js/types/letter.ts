@@ -1,5 +1,7 @@
 import type { Company } from './company';
 
+export type LetterType = 'open_aanbod' | 'follow_up';
+
 export type LetterStatus = 'draft' | 'ready' | 'sending' | 'sent';
 
 export type LetterStatusOption = {
@@ -12,6 +14,7 @@ export type LetterSummary = {
     company_id: number;
     subject: string;
     status: LetterStatus;
+    type: LetterType;
     generated_at: string | null;
     queued_at: string | null;
     sent_at: string | null;

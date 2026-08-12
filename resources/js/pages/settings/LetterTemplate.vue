@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { RotateCcw } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ type Template = {
 };
 
 const props = defineProps<{
+    type: string;
+    types: { value: string; label: string; description: string }[];
     template: Template;
     defaults: Template;
     sample: Record<string, string>;
@@ -34,11 +37,23 @@ defineOptions({
     },
 });
 
-const form = useForm({ ...props.template });
+const form = useForm({ ...props.template, type: props.type });
+
+// The form is seeded from the template that was loaded, so switching type is a
+// fresh page visit rather than swapping the fields underneath unsaved edits.
+watch(
+    () => props.template,
+    (template) => form.defaults({ ...template, type: props.type }).reset(),
+);
 
 const submit = () => {
     form.patch(update().url, { preserveScroll: true });
 };
+
+const activeType = computed(
+    () =>
+        props.types.find((type) => type.value === props.type) ?? props.types[0],
+);
 
 const restoreDefaults = () => {
     form.subject = props.defaults.subject;
@@ -68,6 +83,10 @@ const placeholders = [
         key: 'opening',
         what: 'The opening sentence, adapting to a missing city or industry',
     },
+    {
+        key: 'previous_sent_at',
+        what: 'Date the last letter went out, blank when nothing has been sent',
+    },
 ];
 
 const preview = computed(() => ({
@@ -87,6 +106,24 @@ const preview = computed(() => ({
             title="Letter template"
             description="The open-aanbod letter and cover email every draft starts from. Each letter stays fully editable before it is sent."
         />
+
+        <div class="flex flex-wrap gap-2">
+            <Button
+                v-for="option in types"
+                :key="option.value"
+                :variant="option.value === type ? 'default' : 'outline'"
+                size="sm"
+                as-child
+            >
+                <Link :href="edit({ query: { type: option.value } })">
+                    {{ option.label }}
+                </Link>
+            </Button>
+        </div>
+
+        <p class="text-sm text-muted-foreground">
+            {{ activeType?.description }}
+        </p>
 
         <div class="rounded-md border border-border p-4">
             <p class="text-sm font-medium">Placeholders</p>

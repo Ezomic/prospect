@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\LetterStatus;
+use App\Enums\LetterType;
 use Database\Factories\LetterFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string $body
  * @property string|null $email_subject
  * @property string|null $email_body
+ * @property LetterType $type
  * @property LetterStatus $status
  * @property string|null $send_error
  * @property Carbon|null $generated_at
@@ -26,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Company $company
  */
-#[Fillable(['subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'sent_at', 'send_error'])]
+#[Fillable(['type', 'subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'sent_at', 'send_error'])]
 class Letter extends Model
 {
     /** @use HasFactory<LetterFactory> */
@@ -38,6 +40,7 @@ class Letter extends Model
     protected function casts(): array
     {
         return [
+            'type' => LetterType::class,
             'status' => LetterStatus::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',

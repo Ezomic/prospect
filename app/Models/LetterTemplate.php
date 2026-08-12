@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\LetterType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * The open-aanbod letter and cover email as editable text. A single row: this
+ * The letter and cover email as editable text, one row per letter type: this
  * is one freelancer's outreach, not a multi-tenant app.
  *
  * @property int $id
+ * @property LetterType $type
  * @property string $subject
  * @property string $body
  * @property string $email_subject
@@ -18,9 +20,55 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['subject', 'body', 'email_subject', 'email_body'])]
+#[Fillable(['type', 'subject', 'body', 'email_subject', 'email_body'])]
 class LetterTemplate extends Model
 {
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return ['type' => LetterType::class];
+    }
+
+    /**
+     * The follow-up copy. Deliberately short: it is written to someone who
+     * already has the first letter, so re-introducing Robbin reads as a mail
+     * merge rather than a follow-up.
+     *
+     * @var array<string, string>
+     */
+    public const FOLLOW_UP_DEFAULTS = [
+        'subject' => 'Nog even terugkomend op mijn open aanbod',
+        'body' => <<<'LETTER'
+        {{ greeting }},
+
+        Op {{ previous_sent_at }} stuurde ik u mijn open aanbod als freelance softwareontwikkelaar. Wellicht is het in de drukte ondergesneeuwd, vandaar dit korte bericht.
+
+        Mocht {{ company }} op enig moment behoefte hebben aan een ervaren ontwikkelaar voor een project of een tijdelijke versterking van het team, dan denk ik graag mee. Een kort gesprek is genoeg om te bepalen of het zinvol is.
+
+        Voorbeelden van mijn werk vindt u op thijssensoftware.nl.
+
+        Met vriendelijke groet,
+
+        Robbin Thijssen
+        Thijssen Software
+        LETTER,
+        'email_subject' => 'Nog even terugkomend op mijn open aanbod',
+        'email_body' => <<<'EMAIL'
+        {{ greeting }},
+
+        Op {{ previous_sent_at }} stuurde ik u mijn open aanbod. Bijgaand nogmaals de brief, mocht die zijn ondergesneeuwd.
+
+        Ik hoor graag of er mogelijkheden zijn om kennis te maken.
+
+        Met vriendelijke groet,
+
+        Robbin Thijssen
+        Thijssen Software
+        EMAIL,
+    ];
+
     /**
      * The copy the app shipped with. Also what a reset restores, so it stays
      * here rather than only in the migration that seeded it.
@@ -58,8 +106,19 @@ class LetterTemplate extends Model
         EMAIL,
     ];
 
-    public static function current(): self
+    public static function current(LetterType $type = LetterType::OpenAanbod): self
     {
-        return self::query()->firstOrCreate([], self::DEFAULTS);
+        return self::query()->firstOrCreate(
+            ['type' => $type],
+            self::defaultsFor($type),
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function defaultsFor(LetterType $type): array
+    {
+        return $type === LetterType::FollowUp ? self::FOLLOW_UP_DEFAULTS : self::DEFAULTS;
     }
 }

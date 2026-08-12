@@ -2,6 +2,7 @@
 
 namespace App\Services\Mail;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
 
 /**
@@ -23,6 +24,8 @@ class MailParser
         'returned mail',
         'failure notice',
     ];
+
+    private const MAX_STORED_BODY = 20000;
 
     private const AUTO_REPLY_HEADERS = ['x-autoreply', 'x-autorespond', 'x-auto-reply'];
 
@@ -59,6 +62,7 @@ class MailParser
         string $body,
         ?string $messageId = null,
         array $headers = [],
+        ?CarbonInterface $receivedAt = null,
     ): IncomingMessage {
         $isBounce = $this->looksLikeBounce($from, $subject);
 
@@ -69,7 +73,18 @@ class MailParser
             failedRecipients: $isBounce ? $this->failedRecipients($body) : [],
             messageId: $messageId,
             isAutoReply: $this->looksLikeAutoReply($subject, $headers),
+            body: $this->plainText($body),
+            receivedAt: $receivedAt,
         );
+    }
+
+    /**
+     * Stored bodies are capped: a quoted thread can run to megabytes, and none
+     * of it is worth keeping to read a reply.
+     */
+    private function plainText(string $body): string
+    {
+        return Str::limit(trim($body), self::MAX_STORED_BODY, ' [...]');
     }
 
     private function looksLikeBounce(string $from, string $subject): bool

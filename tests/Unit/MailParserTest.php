@@ -152,3 +152,16 @@ it('treats a genuine reply as no auto-reply', function () {
 
     expect($message->isAutoReply)->toBeFalse();
 });
+
+it('caps a stored body so a quoted thread cannot run away', function () {
+    $message = $this->parser->parse('jane@acme.example', 'Re: hoi', str_repeat('a', 50000));
+
+    expect(strlen($message->body))->toBeLessThan(21000)
+        ->and($message->body)->toEndWith('[...]');
+});
+
+it('keeps a short body as written', function () {
+    $message = $this->parser->parse('jane@acme.example', 'Re: hoi', '  Kort antwoord.  ');
+
+    expect($message->body)->toBe('Kort antwoord.');
+});

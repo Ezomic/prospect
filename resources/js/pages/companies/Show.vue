@@ -27,11 +27,17 @@ import {
 } from '@/routes/companies';
 import { store as generateLetterRoute } from '@/routes/letters';
 import { edit as editLetter } from '@/routes/letters';
-import type { Company, CompanyStatus, LetterSummary } from '@/types';
+import type {
+    Company,
+    CompanyStatus,
+    InboundMessage,
+    LetterSummary,
+} from '@/types';
 
 const props = defineProps<{
     company: Company;
     letters: LetterSummary[];
+    messages: InboundMessage[];
 }>();
 
 defineOptions({
@@ -338,6 +344,53 @@ const formatDateTime = (value: string | null) =>
                         </Button>
                     </div>
                 </div>
+            </CardContent>
+        </Card>
+
+        <Card v-if="messages.length > 0">
+            <CardContent class="flex flex-col gap-4">
+                <h2 class="text-sm text-muted-foreground">
+                    Replies and bounces
+                </h2>
+
+                <article
+                    v-for="message in messages"
+                    :key="message.id"
+                    class="flex flex-col gap-2 rounded-md border border-border p-3"
+                >
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span
+                            class="rounded-md px-2 py-0.5 text-xs font-medium"
+                            :class="
+                                message.kind === 'bounce'
+                                    ? 'border border-destructive/50 text-destructive'
+                                    : 'border border-border text-muted-foreground'
+                            "
+                        >
+                            {{ message.kind === 'bounce' ? 'Bounce' : 'Reply' }}
+                        </span>
+                        <span class="font-mono text-xs break-all">
+                            {{ message.from }}
+                        </span>
+                        <span class="ml-auto text-xs text-muted-foreground">
+                            {{ formatDateTime(message.received_at) }}
+                        </span>
+                    </div>
+
+                    <p v-if="message.subject" class="text-sm font-medium">
+                        {{ message.subject }}
+                    </p>
+
+                    <p
+                        v-if="message.body"
+                        class="max-h-72 overflow-y-auto text-sm whitespace-pre-line text-muted-foreground"
+                    >
+                        {{ message.body }}
+                    </p>
+                    <p v-else class="text-sm text-muted-foreground">
+                        No readable text in this message.
+                    </p>
+                </article>
             </CardContent>
         </Card>
 

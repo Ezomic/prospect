@@ -33,6 +33,13 @@ const props = defineProps<{
     statuses: LetterStatusOption[];
     duplicateCompanies: string[];
     releasable: boolean;
+    preview: {
+        from: string;
+        to: string | null;
+        subject: string;
+        body: string;
+        attachments: string[];
+    };
 }>();
 
 defineOptions({
@@ -103,6 +110,11 @@ const confirmSend = () => {
         },
     );
 };
+
+// The send reads the saved letter, so unsaved edits are not in the preview
+// and would not go out either. Saying so beats a preview that quietly
+// disagrees with the form above it.
+const hasUnsavedChanges = computed(() => form.isDirty);
 
 const releasing = ref(false);
 
@@ -259,7 +271,7 @@ const confirmDelete = () => {
                 <div class="border-t pt-6">
                     <h2 class="text-sm font-medium">Cover email</h2>
                     <p class="text-sm text-muted-foreground">
-                        Sent with the letter and CV attached.
+                        Sent with the letter attached.
                     </p>
                 </div>
 
@@ -301,17 +313,60 @@ const confirmDelete = () => {
             <DialogHeader>
                 <DialogTitle>Send this letter?</DialogTitle>
                 <DialogDescription>
-                    The cover email is sent with the letter and your CV
-                    attached. The company moves to Sent.
+                    This is the message exactly as it will be delivered. The
+                    company moves to Sent.
                 </DialogDescription>
             </DialogHeader>
 
-            <div class="grid gap-1 rounded-md border border-border px-3 py-2">
-                <span class="text-xs text-muted-foreground">Recipient</span>
-                <span class="font-mono text-sm break-all">
-                    {{ recipient ?? 'No email address on this company' }}
-                </span>
+            <div
+                class="overflow-hidden rounded-md border border-border"
+                data-testid="email-preview"
+            >
+                <dl
+                    class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 bg-muted/40 px-3 py-2 text-sm"
+                >
+                    <dt class="text-xs text-muted-foreground">From</dt>
+                    <dd class="font-mono text-xs break-all">
+                        {{ preview.from }}
+                    </dd>
+                    <dt class="text-xs text-muted-foreground">To</dt>
+                    <dd class="font-mono text-xs break-all">
+                        {{ preview.to ?? 'No email address on this company' }}
+                    </dd>
+                    <dt class="text-xs text-muted-foreground">Subject</dt>
+                    <dd class="text-xs font-medium">{{ preview.subject }}</dd>
+                    <dt class="text-xs text-muted-foreground">Attached</dt>
+                    <dd class="font-mono text-xs">
+                        {{ preview.attachments.join(', ') }}
+                    </dd>
+                </dl>
+                <p
+                    class="max-h-64 overflow-y-auto px-3 py-3 text-sm whitespace-pre-line"
+                >
+                    {{ preview.body }}
+                </p>
             </div>
+
+            <p class="text-xs text-muted-foreground">
+                <a
+                    :href="pdf(letter.id).url"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary underline-offset-4 hover:underline"
+                >
+                    Open the attached letter PDF
+                </a>
+                to check it before sending.
+            </p>
+
+            <p
+                v-if="hasUnsavedChanges"
+                class="rounded-md border border-amber-500/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-500"
+            >
+                You have unsaved edits. This preview is the saved letter, and
+                that is what will be sent. Cancel and save first if the changes
+                should go out.
+            </p>
 
             <p
                 v-if="duplicateCompanies.length > 0"

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -225,5 +226,37 @@ it('attaches only the letter pdf, never a cv', function () {
         $attachments = $mail->attachments();
 
         return count($attachments) === 1;
+    });
+});
+
+it('delivers exactly what the preview showed', function () {
+    Storage::fake('local');
+    Mail::fake();
+
+    $this->actingAs(sender());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example', 'status' => 'new']);
+    $letter = Letter::factory()->ready()->create([
+        'company_id' => $company->id,
+        'email_subject' => 'Open aanbod - Robbin Thijssen',
+        'email_body' => "Beste Jane Doe,\n\nBijgaand mijn open aanbod.",
+        'sent_at' => null,
+    ]);
+
+    // What the dialog was told.
+    $preview = null;
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(function (Assert $page) use (&$preview) {
+            $preview = $page->toArray()['props']['preview'];
+        });
+
+    $this->post(route('letters.send', $letter));
+
+    // What actually went out. If these ever diverge the preview is a lie, and
+    // it is the last check before the mail is unrecallable.
+    Mail::assertSent(OutreachMail::class, function (OutreachMail $mail) use ($preview) {
+        return $mail->envelope()->subject === $preview['subject']
+            && OutreachMail::bodyFor($mail->letter) === $preview['body']
+            && $mail->hasTo($preview['to']);
     });
 });

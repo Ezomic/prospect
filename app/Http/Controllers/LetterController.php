@@ -6,6 +6,7 @@ use App\Actions\Letters\GenerateLetter;
 use App\Enums\LetterStatus;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Jobs\SendLetter;
+use App\Mail\OutreachMail;
 use App\Models\Company;
 use App\Models\Letter;
 use App\Services\Mail\LetterSender;
@@ -36,6 +37,7 @@ class LetterController extends Controller
             'statuses' => $this->statusOptions(),
             'duplicateCompanies' => $this->companiesSharingEmail($letter),
             'releasable' => $this->isStuck($letter),
+            'preview' => $this->preview($letter),
         ]);
     }
 
@@ -105,6 +107,31 @@ class LetterController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter deleted.')]);
 
         return to_route('companies.show', $companyId);
+    }
+
+    /**
+     * The message exactly as it will be delivered. Read through OutreachMail so
+     * the preview cannot describe one thing while another is sent: this is the
+     * last point at which a wrong greeting or an unresolved placeholder can be
+     * caught, and after it the mail cannot be recalled.
+     *
+     * @return array{from: string, to: string|null, subject: string, body: string, attachments: array<int, string>}
+     */
+    private function preview(Letter $letter): array
+    {
+        $fromAddress = config('mail.from.address');
+        $fromName = config('mail.from.name');
+
+        return [
+            'from' => trim(
+                (is_string($fromName) ? $fromName.' ' : '')
+                .'<'.(is_string($fromAddress) ? $fromAddress : 'unknown').'>'
+            ),
+            'to' => $letter->company->email,
+            'subject' => OutreachMail::subjectFor($letter),
+            'body' => OutreachMail::bodyFor($letter),
+            'attachments' => [OutreachMail::attachmentNameFor($letter)],
+        ];
     }
 
     /**

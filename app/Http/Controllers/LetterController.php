@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Letters\GenerateLetter;
 use App\Enums\LetterStatus;
+use App\Http\Requests\SendLetterRequest;
 use App\Http\Requests\StoreLetterRequest;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Jobs\SendLetter;
@@ -38,6 +39,7 @@ class LetterController extends Controller
             'statuses' => $this->statusOptions(),
             'duplicateCompanies' => $this->companiesSharingEmail($letter),
             'releasable' => $this->isStuck($letter),
+            'cancellable' => $this->isScheduled($letter),
             'preview' => $this->preview($letter),
         ]);
     }
@@ -63,7 +65,7 @@ class LetterController extends Controller
         return to_route('companies.show', $letter->company_id);
     }
 
-    public function send(Letter $letter, LetterSender $sender): RedirectResponse
+    public function send(SendLetterRequest $request, Letter $letter, LetterSender $sender): RedirectResponse
     {
         $letter->load('company');
 
@@ -77,17 +79,61 @@ class LetterController extends Controller
             return back();
         }
 
+        $scheduledFor = $request->scheduledFor();
+
         $letter->forceFill([
             'status' => LetterStatus::Sending,
             'queued_at' => now(),
+            'scheduled_for' => $scheduledFor,
             'send_error' => null,
         ])->save();
 
-        SendLetter::dispatch($letter);
+        $job = SendLetter::dispatch($letter);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter queued for sending.')]);
+        if ($scheduledFor !== null) {
+            $job->delay($scheduledFor);
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $scheduledFor !== null
+                ? __('Letter scheduled for :moment.', ['moment' => $scheduledFor->toDayDateTimeString()])
+                : __('Letter queued for sending.'),
+        ]);
 
         return to_route('companies.show', $letter->company_id);
+    }
+
+    /**
+     * Calls off a scheduled send that has not run yet. The delayed job cannot
+     * be pulled off the queue, so this moves the letter out of Sending and the
+     * job checks that on arrival rather than delivering regardless.
+     */
+    public function cancel(Letter $letter): RedirectResponse
+    {
+        if (! $this->isScheduled($letter)) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('This letter is not scheduled.')]);
+
+            return back();
+        }
+
+        $letter->forceFill([
+            'status' => LetterStatus::Ready,
+            'queued_at' => null,
+            'scheduled_for' => null,
+        ])->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Scheduled send cancelled.')]);
+
+        return back();
+    }
+
+    private function isScheduled(Letter $letter): bool
+    {
+        return $letter->status === LetterStatus::Sending
+            && $letter->sent_at === null
+            && $letter->scheduled_for !== null
+            && $letter->scheduled_for->isFuture();
     }
 
     public function pdf(Letter $letter): HttpResponse
@@ -151,6 +197,7 @@ class LetterController extends Controller
         $letter->forceFill([
             'status' => LetterStatus::Ready,
             'queued_at' => null,
+            'scheduled_for' => null,
             'send_error' => __('The send never completed and was released by hand.'),
         ])->save();
 
@@ -159,6 +206,13 @@ class LetterController extends Controller
         return back();
     }
 
+    /**
+     * A letter is stuck when nothing can still be working on it. Measured from
+     * the scheduled moment where there is one, not from when it was queued: a
+     * scheduled letter is legitimately in Sending for hours, and offering to
+     * release it would hand back a letter that is about to go out, and then
+     * send it twice.
+     */
     private function isStuck(Letter $letter): bool
     {
         if ($letter->status !== LetterStatus::Sending || $letter->sent_at !== null) {
@@ -168,8 +222,9 @@ class LetterController extends Controller
         $minutes = config('outreach.stuck_after_minutes');
         $minutes = is_int($minutes) && $minutes > 0 ? $minutes : 5;
 
-        return $letter->queued_at === null
-            || $letter->queued_at->addMinutes($minutes)->isPast();
+        $since = $letter->scheduled_for ?? $letter->queued_at;
+
+        return $since === null || $since->addMinutes($minutes)->isPast();
     }
 
     /**

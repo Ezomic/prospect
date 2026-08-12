@@ -17,6 +17,7 @@ export type LetterSummary = {
     type: LetterType;
     generated_at: string | null;
     queued_at: string | null;
+    scheduled_for: string | null;
     sent_at: string | null;
 };
 

@@ -73,6 +73,7 @@ class LetterSender
             'status' => LetterStatus::Sent,
             'sent_at' => now(),
             'queued_at' => null,
+            'scheduled_for' => null,
             'send_error' => null,
         ])->save();
 

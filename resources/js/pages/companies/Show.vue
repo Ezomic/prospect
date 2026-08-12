@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
+import InputError from '@/components/InputError.vue';
 import LetterStatusBadge from '@/components/letters/LetterStatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +16,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import InputError from '@/components/InputError.vue';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -33,10 +33,10 @@ import {
     index,
     status as updateStatus,
 } from '@/routes/companies';
-import { store as generateLetterRoute } from '@/routes/letters';
-import { edit as editLetter } from '@/routes/letters';
 import { store as storeInteraction } from '@/routes/interactions';
 import { destroy as destroyInteraction } from '@/routes/interactions';
+import { store as generateLetterRoute } from '@/routes/letters';
+import { edit as editLetter } from '@/routes/letters';
 import type {
     Company,
     CompanyStatus,

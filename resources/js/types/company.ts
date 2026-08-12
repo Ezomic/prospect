@@ -31,3 +31,15 @@ export type Company = {
 };
 
 export type CompanySort = 'name' | 'status' | 'lead_score' | 'last_contact';
+
+export type InboundMessageKind = 'reply' | 'bounce';
+
+export type InboundMessage = {
+    id: number;
+    company_id: number;
+    kind: InboundMessageKind;
+    from: string;
+    subject: string | null;
+    body: string | null;
+    received_at: string;
+};

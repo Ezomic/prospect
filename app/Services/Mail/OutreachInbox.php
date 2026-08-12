@@ -2,6 +2,7 @@
 
 namespace App\Services\Mail;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Webklex\PHPIMAP\ClientManager;
@@ -130,15 +131,37 @@ class OutreachInbox implements Inbox
     {
         $sender = $message->getFrom()[0] ?? null;
         $from = is_object($sender) && isset($sender->mail) && is_string($sender->mail) ? $sender->mail : '';
-        $body = $message->getTextBody() ?: (string) $message->getHTMLBody();
 
         return $this->parser->parse(
             $from,
             (string) $message->getSubject(),
-            $body,
+            $this->plainTextBody($message),
             (string) $message->getMessageId(),
             $this->autoReplyHeaders($message),
+            $this->receivedAt($message),
         );
+    }
+
+    /**
+     * Falls back to the HTML part with its markup stripped rather than storing
+     * the markup itself, which would be an XSS surface the moment it is shown.
+     */
+    private function plainTextBody(Message $message): string
+    {
+        $text = (string) $message->getTextBody();
+
+        if (trim($text) !== '') {
+            return $text;
+        }
+
+        return trim(html_entity_decode(strip_tags((string) $message->getHTMLBody())));
+    }
+
+    private function receivedAt(Message $message): ?CarbonInterface
+    {
+        $date = $message->getDate()->first();
+
+        return $date instanceof CarbonInterface ? $date : null;
     }
 
     /**

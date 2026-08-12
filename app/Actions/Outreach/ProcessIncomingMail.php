@@ -3,6 +3,7 @@
 namespace App\Actions\Outreach;
 
 use App\Enums\CompanyStatus;
+use App\Enums\InboundMessageKind;
 use App\Models\Company;
 use App\Services\Mail\IncomingMessage;
 
@@ -26,7 +27,7 @@ class ProcessIncomingMail
             $acted = false;
 
             foreach ($message->failedRecipients as $email) {
-                $acted = $this->transition($email, CompanyStatus::Bounced, 'bounced_at') || $acted;
+                $acted = $this->transition($email, CompanyStatus::Bounced, 'bounced_at', $message) || $acted;
             }
 
             return $acted;
@@ -38,11 +39,15 @@ class ProcessIncomingMail
             return false;
         }
 
-        return $this->transition($message->from, CompanyStatus::Replied, 'replied_at');
+        return $this->transition($message->from, CompanyStatus::Replied, 'replied_at', $message);
     }
 
-    private function transition(string $email, CompanyStatus $status, string $stampColumn): bool
-    {
+    private function transition(
+        string $email,
+        CompanyStatus $status,
+        string $stampColumn,
+        IncomingMessage $message,
+    ): bool {
         $company = Company::query()
             ->where('email', $email)
             ->where('status', CompanyStatus::Sent)
@@ -57,6 +62,41 @@ class ProcessIncomingMail
             $stampColumn => $company->{$stampColumn} ?? now(),
         ])->save();
 
+        $this->record($company, $message, $status);
+
         return true;
+    }
+
+    /**
+     * Keeps the message that caused the transition, so the reply can be read
+     * where the decision about what to do next is made rather than only in the
+     * mailbox.
+     *
+     * Deduplicated on message id because a message the poller leaves unread is
+     * seen again on the next run: the transitions are idempotent, the storage
+     * would not be.
+     */
+    private function record(Company $company, IncomingMessage $message, CompanyStatus $status): void
+    {
+        $attributes = [
+            'kind' => $status === CompanyStatus::Bounced
+                ? InboundMessageKind::Bounce
+                : InboundMessageKind::Reply,
+            'from' => $message->from,
+            'subject' => $message->subject !== '' ? $message->subject : null,
+            'body' => $message->body !== '' ? $message->body : null,
+            'received_at' => $message->receivedAt ?? now(),
+        ];
+
+        if ($message->messageId === null || $message->messageId === '') {
+            $company->inboundMessages()->create($attributes);
+
+            return;
+        }
+
+        $company->inboundMessages()->firstOrCreate(
+            ['message_id' => $message->messageId],
+            $attributes,
+        );
     }
 }

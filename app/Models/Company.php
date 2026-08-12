@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Letter> $letters
+ * @property-read Collection<int, InboundMessage> $inboundMessages
  */
 #[Fillable(['name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'notes', 'source', 'contact_role', 'linkedin_url', 'lead_score', 'first_contact_channel'])]
 class Company extends Model
@@ -57,6 +58,14 @@ class Company extends Model
             'bounced_at' => 'datetime',
             'follow_up_at' => 'date',
         ];
+    }
+
+    /**
+     * @return HasMany<InboundMessage, $this>
+     */
+    public function inboundMessages(): HasMany
+    {
+        return $this->hasMany(InboundMessage::class)->latest('received_at');
     }
 
     /**

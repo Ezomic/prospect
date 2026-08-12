@@ -199,3 +199,35 @@ it('reports no duplicates when the address is unique', function () {
     $this->get(route('letters.edit', $letter))
         ->assertInertia(fn (Assert $page) => $page->where('duplicateCompanies', []));
 });
+
+it('previews the message exactly as it will be delivered', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['email' => 'hr@acme.example']);
+    $letter = Letter::factory()->create([
+        'company_id' => $company->id,
+        'email_subject' => 'Open aanbod - Robbin Thijssen',
+        'email_body' => "Beste Jane Doe,\n\nBijgaand mijn open aanbod.",
+    ]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('preview.to', 'hr@acme.example')
+            ->where('preview.subject', 'Open aanbod - Robbin Thijssen')
+            ->where('preview.body', "Beste Jane Doe,\n\nBijgaand mijn open aanbod.")
+            ->where('preview.attachments', ["brief-{$letter->id}.pdf"])
+            ->has('preview.from')
+        );
+});
+
+it('previews the subject the mail actually falls back to', function () {
+    $this->actingAs(User::factory()->create());
+
+    $letter = Letter::factory()->create([
+        'subject' => 'Brief onderwerp',
+        'email_subject' => null,
+    ]);
+
+    $this->get(route('letters.edit', $letter))
+        ->assertInertia(fn (Assert $page) => $page->where('preview.subject', 'Brief onderwerp'));
+});

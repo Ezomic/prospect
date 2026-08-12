@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import InputError from '@/components/InputError.vue';
 import LetterStatusBadge from '@/components/letters/LetterStatusBadge.vue';
@@ -99,16 +99,22 @@ const confirmDelete = () => {
 
 const generating = ref(false);
 
-const generateLetter = () => {
+const generateLetter = (type: 'open_aanbod' | 'follow_up') => {
     router.post(
         generateLetterRoute(props.company.id).url,
-        {},
+        { type },
         {
             onStart: () => (generating.value = true),
             onFinish: () => (generating.value = false),
         },
     );
 };
+
+// A follow-up refers back to a letter that went out, so it is only offered
+// once one has.
+const hasSentLetter = computed(() =>
+    props.letters.some((letter) => letter.sent_at !== null),
+);
 
 const formatDate = (value: string | null) =>
     value ? new Date(value).toLocaleDateString() : '-';
@@ -483,15 +489,27 @@ const removeInteraction = (id: number) => {
             <CardContent class="flex flex-col gap-4">
                 <div class="flex items-center justify-between gap-4">
                     <h2 class="text-sm text-muted-foreground">Letters</h2>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        :disabled="generating"
-                        @click="generateLetter"
-                    >
-                        <Plus />
-                        Generate letter
-                    </Button>
+                    <div class="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            :disabled="generating"
+                            @click="generateLetter('open_aanbod')"
+                        >
+                            <Plus />
+                            Open aanbod
+                        </Button>
+                        <Button
+                            v-if="hasSentLetter"
+                            size="sm"
+                            variant="outline"
+                            :disabled="generating"
+                            @click="generateLetter('follow_up')"
+                        >
+                            <Plus />
+                            Follow-up
+                        </Button>
+                    </div>
                 </div>
 
                 <p

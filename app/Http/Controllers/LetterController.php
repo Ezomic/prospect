@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Letters\GenerateLetter;
 use App\Enums\LetterStatus;
+use App\Http\Requests\StoreLetterRequest;
 use App\Http\Requests\UpdateLetterRequest;
 use App\Jobs\SendLetter;
 use App\Mail\OutreachMail;
@@ -19,9 +20,9 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LetterController extends Controller
 {
-    public function store(Company $company, GenerateLetter $generateLetter): RedirectResponse
+    public function store(StoreLetterRequest $request, Company $company, GenerateLetter $generateLetter): RedirectResponse
     {
-        $letter = $generateLetter->handle($company);
+        $letter = $generateLetter->handle($company, $request->letterType());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Letter generated.')]);
 

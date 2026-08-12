@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\LetterType;
 use App\Models\Company;
 use App\Models\Letter;
 use App\Models\LetterTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Date;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -37,10 +39,11 @@ it('saves an edited template', function () {
         'body' => 'Body voor {{ company }}',
         'email_subject' => 'Mail onderwerp',
         'email_body' => 'Mail body',
-    ])->assertRedirect(route('letter-template.edit'));
+    ])->assertRedirect(route('letter-template.edit', ['type' => 'open_aanbod']));
 
     expect(LetterTemplate::current()->subject)->toBe('Nieuw onderwerp voor {{ company }}')
-        ->and(LetterTemplate::count())->toBe(1);
+        // One row per letter type since PROS-47, not one row overall.
+        ->and(LetterTemplate::count())->toBe(2);
 });
 
 it('rejects an empty template', function () {
@@ -233,4 +236,71 @@ it('leaves a hand-written subject alone', function () {
     runAanbodMigration();
 
     expect(LetterTemplate::current()->subject)->toBe('Even voorstellen: {{ company }}');
+});
+
+it('keeps a separate template per letter type', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->patch(route('letter-template.update'), [
+        'type' => 'follow_up',
+        'subject' => 'Herinnering voor {{ company }}',
+        'body' => 'Op {{ previous_sent_at }} schreef ik u.',
+        'email_subject' => 'Herinnering',
+        'email_body' => 'Korte herinnering.',
+    ])->assertRedirect();
+
+    expect(LetterTemplate::current(LetterType::FollowUp)->subject)
+        ->toBe('Herinnering voor {{ company }}')
+        // The open aanbod is untouched by an edit to the follow-up.
+        ->and(LetterTemplate::current(LetterType::OpenAanbod)->subject)
+        ->toContain('Open aanbod');
+});
+
+it('generates a follow-up from the follow-up template', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['name' => 'Acme BV', 'contact_name' => 'Jane Doe']);
+    Letter::factory()->create([
+        'company_id' => $company->id,
+        'sent_at' => Date::parse('2026-07-27 10:00:00'),
+    ]);
+
+    $this->post(route('letters.store', $company), ['type' => 'follow_up'])->assertRedirect();
+
+    $letter = $company->letters()->where('type', LetterType::FollowUp)->sole();
+
+    expect($letter->type)->toBe(LetterType::FollowUp)
+        ->and($letter->body)->toContain('27 juli 2026')
+        ->and($letter->body)->toContain('Acme BV')
+        ->and($letter->body)->not->toContain('Mijn naam is Robbin Thijssen');
+});
+
+it('defaults to the open aanbod when no type is given', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create();
+
+    $this->post(route('letters.store', $company))->assertRedirect();
+
+    expect($company->letters()->sole()->type)->toBe(LetterType::OpenAanbod);
+});
+
+it('leaves the previous send date blank when nothing has been sent', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create(['name' => 'Acme BV']);
+
+    $this->post(route('letters.store', $company), ['type' => 'follow_up']);
+
+    // Better a gap than a date that never happened.
+    expect($company->letters()->sole()->body)->not->toContain('{{ previous_sent_at }}');
+});
+
+it('rejects a letter type that does not exist', function () {
+    $this->actingAs(User::factory()->create());
+
+    $company = Company::factory()->create();
+
+    $this->post(route('letters.store', $company), ['type' => 'nonsense'])
+        ->assertSessionHasErrors('type');
 });

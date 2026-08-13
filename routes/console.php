@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('outreach:poll')->everyFifteenMinutes()->withoutOverlapping();
+
+// Monday morning, so the week's follow-ups are read before the week starts.
+Schedule::command('outreach:digest')->weeklyOn(1, '08:00');

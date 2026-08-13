@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('companies/import', [CompanyImportController::class, 'store'])->name('companies.import.store');
 
     Route::resource('companies', CompanyController::class);
+    Route::post('companies/bulk', [CompanyController::class, 'bulk'])->name('companies.bulk');
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');
     Route::patch('companies/{company}/do-not-contact', [CompanyController::class, 'doNotContact'])->name('companies.do-not-contact');
     Route::patch('companies/{company}/follow-up', [CompanyController::class, 'followUp'])->name('companies.follow-up');

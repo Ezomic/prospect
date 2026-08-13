@@ -21,6 +21,7 @@ import { computed, ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogClose,
@@ -45,6 +46,7 @@ import {
     index as companiesIndex,
     show,
 } from '@/routes/companies';
+import { bulk } from '@/routes/companies';
 import { create as importCompanies } from '@/routes/companies/import';
 import type {
     Company,
@@ -137,24 +139,81 @@ const clearFilters = () => {
     missingEmail.value = false;
 };
 
+const selected = ref<number[]>([]);
+
+// Only ever the rows on screen. A select-all-across-pages would act on
+// companies the user cannot see, which is how bulk tools cause damage.
+const allOnPageSelected = computed(
+    () =>
+        props.companies.data.length > 0 &&
+        props.companies.data.every((company) =>
+            selected.value.includes(company.id),
+        ),
+);
+
+const toggleAllOnPage = (checked: boolean) => {
+    const ids = props.companies.data.map((company) => company.id);
+
+    selected.value = checked
+        ? [...new Set([...selected.value, ...ids])]
+        : selected.value.filter((id) => !ids.includes(id));
+};
+
+const toggleRow = (id: number, checked: boolean) => {
+    selected.value = checked
+        ? [...selected.value, id]
+        : selected.value.filter((value) => value !== id);
+};
+
+const bulkAction = ref('');
+const bulkStatus = ref<CompanyStatus>('new');
+const bulkReason = ref('');
+const applying = ref(false);
+
+const applyBulk = () => {
+    if (selected.value.length === 0 || bulkAction.value === '') {
+        return;
+    }
+
+    router.post(
+        bulk().url,
+        {
+            ids: selected.value,
+            action: bulkAction.value,
+            status: bulkStatus.value,
+            reason: bulkReason.value || null,
+        },
+        {
+            preserveScroll: true,
+            onStart: () => (applying.value = true),
+            onFinish: () => (applying.value = false),
+            onSuccess: () => {
+                selected.value = [];
+                bulkAction.value = '';
+                bulkReason.value = '';
+            },
+        },
+    );
+};
+
 const websiteUrl = (website: string) =>
     /^https?:\/\//.test(website) ? website : `https://${website}`;
 
 const deleteOpen = ref(false);
 const deleting = ref(false);
-const selected = ref<Company | null>(null);
+const pendingDelete = ref<Company | null>(null);
 
 const askDelete = (company: Company) => {
-    selected.value = company;
+    pendingDelete.value = company;
     deleteOpen.value = true;
 };
 
 const confirmDelete = () => {
-    if (!selected.value) {
+    if (!pendingDelete.value) {
         return;
     }
 
-    router.delete(destroy(selected.value.id).url, {
+    router.delete(destroy(pendingDelete.value.id).url, {
         preserveScroll: true,
         onStart: () => (deleting.value = true),
         onFinish: () => (deleting.value = false),
@@ -245,6 +304,76 @@ const confirmDelete = () => {
         </div>
 
         <div
+            v-if="selected.length > 0"
+            class="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3 sm:flex-row sm:items-center"
+        >
+            <span class="text-sm font-medium">
+                {{ selected.length }} selected
+            </span>
+
+            <Select v-model="bulkAction">
+                <SelectTrigger class="w-full sm:w-56" aria-label="Bulk action">
+                    <SelectValue placeholder="Choose an action" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="status">Set status</SelectItem>
+                    <SelectItem value="do_not_contact">
+                        Mark do not contact
+                    </SelectItem>
+                    <SelectItem value="clear_follow_up">
+                        Clear follow-up
+                    </SelectItem>
+                    <SelectItem value="generate_letter">
+                        Generate draft letters
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select v-if="bulkAction === 'status'" v-model="bulkStatus">
+                <SelectTrigger class="w-full sm:w-40" aria-label="New status">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem
+                        v-for="option in statuses"
+                        :key="option.value"
+                        :value="option.value"
+                    >
+                        {{ option.label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Input
+                v-if="bulkAction === 'do_not_contact'"
+                v-model="bulkReason"
+                placeholder="Reason (optional)"
+                class="w-full sm:w-64"
+            />
+
+            <div class="flex items-center gap-2 sm:ml-auto">
+                <Button
+                    size="sm"
+                    :disabled="applying || bulkAction === ''"
+                    @click="applyBulk"
+                >
+                    Apply
+                </Button>
+                <Button size="sm" variant="ghost" @click="selected = []">
+                    Clear selection
+                </Button>
+            </div>
+        </div>
+
+        <p
+            v-if="selected.length > 0 && bulkAction === 'generate_letter'"
+            class="text-xs text-muted-foreground"
+        >
+            Drafts only. Sending stays one letter at a time, with its preview
+            and confirmation.
+        </p>
+
+        <div
             v-if="companies.data.length === 0 && !hasActiveFilters"
             class="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 p-12 text-center dark:border-sidebar-border"
         >
@@ -285,6 +414,16 @@ const confirmDelete = () => {
                     <tr
                         class="border-b border-sidebar-border/70 text-left text-muted-foreground dark:border-sidebar-border"
                     >
+                        <th class="px-4 py-3 font-medium">
+                            <Checkbox
+                                :model-value="allOnPageSelected"
+                                aria-label="Select every company on this page"
+                                @update:model-value="
+                                    (checked) =>
+                                        toggleAllOnPage(checked === true)
+                                "
+                            />
+                        </th>
                         <th
                             v-for="column in columns"
                             :key="column.key"
@@ -331,7 +470,20 @@ const confirmDelete = () => {
                         v-for="company in companies.data"
                         :key="company.id"
                         class="border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border"
+                        :class="{
+                            'bg-primary/5': selected.includes(company.id),
+                        }"
                     >
+                        <td class="px-4 py-3">
+                            <Checkbox
+                                :model-value="selected.includes(company.id)"
+                                :aria-label="`Select ${company.name}`"
+                                @update:model-value="
+                                    (checked) =>
+                                        toggleRow(company.id, checked === true)
+                                "
+                            />
+                        </td>
                         <td class="px-4 py-3 font-medium">
                             <div class="flex items-center gap-2">
                                 <Link
@@ -452,7 +604,7 @@ const confirmDelete = () => {
             <DialogHeader>
                 <DialogTitle>Delete company?</DialogTitle>
                 <DialogDescription>
-                    This permanently removes {{ selected?.name }} from your
+                    This permanently removes {{ pendingDelete?.name }} from your
                     outreach list. This cannot be undone.
                 </DialogDescription>
             </DialogHeader>

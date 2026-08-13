@@ -25,4 +25,10 @@ return [
     */
     'stuck_after_minutes' => (int) env('OUTREACH_STUCK_AFTER_MINUTES', 5),
 
+    /*
+    | Days after a letter goes out before the company surfaces as a follow-up.
+    | Set to 0 to leave follow-ups entirely manual.
+    */
+    'follow_up_after_days' => (int) env('OUTREACH_FOLLOW_UP_AFTER_DAYS', 14),
+
 ];

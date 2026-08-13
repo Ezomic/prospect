@@ -7,6 +7,7 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronUp,
+    Download,
     MailX,
     Pencil,
     Plus,
@@ -46,7 +47,7 @@ import {
     index as companiesIndex,
     show,
 } from '@/routes/companies';
-import { bulk } from '@/routes/companies';
+import { bulk, exportMethod as exportCompanies } from '@/routes/companies';
 import { create as importCompanies } from '@/routes/companies/import';
 import type {
     Company,
@@ -232,6 +233,12 @@ const confirmDelete = () => {
                 description="Companies to pitch and track through the outreach pipeline."
             />
             <div class="flex items-center gap-2">
+                <Button v-if="companies.total > 0" variant="outline" as-child>
+                    <a :href="exportCompanies({ query: query() }).url">
+                        <Download />
+                        Export
+                    </a>
+                </Button>
                 <Button variant="outline" as-child>
                     <Link :href="importCompanies()">
                         <Upload />

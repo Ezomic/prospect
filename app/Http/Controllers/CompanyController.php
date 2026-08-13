@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Companies\ApplyBulkAction;
 use App\Actions\Companies\BuildCompanyTimeline;
 use App\Enums\CompanyStatus;
 use App\Enums\InteractionKind;
+use App\Http\Requests\BulkCompanyActionRequest;
 use App\Http\Requests\IndexCompanyRequest;
 use App\Http\Requests\ScheduleFollowUpRequest;
 use App\Http\Requests\StoreCompanyRequest;
@@ -162,6 +164,29 @@ class CompanyController extends Controller
             'message' => $flagged
                 ? __('Marked do not contact.')
                 : __('Contact allowed again.'),
+        ]);
+
+        return back();
+    }
+
+    public function bulk(BulkCompanyActionRequest $request, ApplyBulkAction $apply): RedirectResponse
+    {
+        $status = $request->filled('status')
+            ? CompanyStatus::from($request->string('status')->toString())
+            : null;
+
+        $result = $apply->handle(
+            $request->ids(),
+            $request->string('action')->toString(),
+            $status,
+            $request->string('reason')->toString() ?: null,
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $result['skipped'] > 0
+                ? __(':applied updated, :skipped skipped.', $result)
+                : trans_choice(':count company updated.|:count companies updated.', $result['applied'], ['count' => $result['applied']]),
         ]);
 
         return back();

@@ -21,8 +21,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('companies/import/preview', [CompanyImportController::class, 'preview'])->name('companies.import.preview');
     Route::post('companies/import', [CompanyImportController::class, 'store'])->name('companies.import.store');
 
-    Route::resource('companies', CompanyController::class);
+    // Both must precede the resource: companies/{company} would otherwise
+    // match "export" as an id and 404 on the binding.
+    Route::get('companies/export', [CompanyController::class, 'export'])->name('companies.export');
     Route::post('companies/bulk', [CompanyController::class, 'bulk'])->name('companies.bulk');
+
+    Route::resource('companies', CompanyController::class);
     Route::patch('companies/{company}/status', [CompanyController::class, 'updateStatus'])->name('companies.status');
     Route::patch('companies/{company}/do-not-contact', [CompanyController::class, 'doNotContact'])->name('companies.do-not-contact');
     Route::patch('companies/{company}/follow-up', [CompanyController::class, 'followUp'])->name('companies.follow-up');

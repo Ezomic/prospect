@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Companies\ApplyBulkAction;
 use App\Actions\Companies\BuildCompanyTimeline;
+use App\Actions\Companies\ParseCompanyCsv;
 use App\Enums\CompanyStatus;
 use App\Enums\InteractionKind;
 use App\Http\Requests\BulkCompanyActionRequest;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CompanyController extends Controller
 {
@@ -29,21 +31,9 @@ class CompanyController extends Controller
         $direction = $request->direction();
         $missingEmail = $request->boolean('missing_email');
 
-        $companies = Company::query()
+        $companies = $this->filtered($request)
             ->select(['id', 'name', 'website', 'email', 'contact_name', 'city', 'kvk_number', 'industry', 'status', 'source', 'lead_score', 'do_not_contact'])
             ->withMax('letters as last_contact_at', 'sent_at')
-            ->when($search, fn (Builder $query, string $search) => $query->where(fn (Builder $query) => $query
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('contact_name', 'like', "%{$search}%")
-                ->orWhere('city', 'like', "%{$search}%")
-                ->orWhere('industry', 'like', "%{$search}%")
-            ))
-            ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
-            ->when($missingEmail, fn (Builder $query) => $query->whereNull('email'))
-            ->orderBy(IndexCompanyRequest::SORTABLE[$sort], $direction)
-            // A stable tie-break, so paging through equal values cannot repeat
-            // or skip a row.
-            ->orderBy('id')
             ->paginate(25)
             ->withQueryString();
 
@@ -59,6 +49,67 @@ class CompanyController extends Controller
             'missingEmailCount' => Company::query()->whereNull('email')->count(),
             'statuses' => $this->statusOptions(),
         ]);
+    }
+
+    /**
+     * Exports the filtered view rather than the whole table, so the
+     * missing-email filter doubles as a worklist: pull those into a
+     * spreadsheet, research the addresses, and bring them back through the
+     * importer, which matches on email and kvk_number.
+     */
+    public function export(IndexCompanyRequest $request): StreamedResponse
+    {
+        $companies = $this->filtered($request)->get();
+        $columns = ParseCompanyCsv::COLUMNS;
+
+        return response()->streamDownload(function () use ($companies, $columns) {
+            $handle = fopen('php://output', 'w');
+
+            if ($handle === false) {
+                return;
+            }
+
+            fputcsv($handle, $columns);
+
+            foreach ($companies as $company) {
+                $row = [];
+
+                foreach ($columns as $column) {
+                    $value = $company->getAttribute($column);
+
+                    $row[] = is_scalar($value) ? $value : null;
+                }
+
+                fputcsv($handle, $row);
+            }
+
+            fclose($handle);
+        }, 'companies-'.today()->toDateString().'.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    /**
+     * @return Builder<Company>
+     */
+    private function filtered(IndexCompanyRequest $request): Builder
+    {
+        $search = $request->string('search')->toString() ?: null;
+        $status = $request->string('status')->toString() ?: null;
+
+        return Company::query()
+            ->when($search, fn (Builder $query, string $search) => $query->where(fn (Builder $query) => $query
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('contact_name', 'like', "%{$search}%")
+                ->orWhere('city', 'like', "%{$search}%")
+                ->orWhere('industry', 'like', "%{$search}%")
+            ))
+            ->when($status, fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($request->boolean('missing_email'), fn (Builder $query) => $query->whereNull('email'))
+            ->orderBy(IndexCompanyRequest::SORTABLE[$request->sort()], $request->direction())
+            // A stable tie-break, so paging through equal values cannot repeat
+            // or skip a row.
+            ->orderBy('id');
     }
 
     public function show(Company $company, BuildCompanyTimeline $timeline): Response

@@ -15,11 +15,16 @@ use Illuminate\Support\Str;
 class ParseCompanyCsv
 {
     /**
-     * The columns an import may set, keyed by the header it is recognised by.
-     * Headers are matched loosely, so "Contact name", "contact_name" and
-     * "CONTACT NAME" all land on the same column.
+     * The columns an import may set. Public because the export writes exactly
+     * these as its headers: a file that cannot be read back by the importer it
+     * came from is not a round trip.
+     *
+     * Headers are matched loosely on the way in, so "Contact name",
+     * "contact_name" and "CONTACT NAME" all land on the same column.
+     *
+     * @var list<string>
      */
-    private const COLUMNS = [
+    public const COLUMNS = [
         'name',
         'website',
         'email',

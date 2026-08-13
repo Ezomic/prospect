@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Actions\Companies\ApplyBulkAction;
 use App\Actions\Companies\BuildCompanyTimeline;
+use App\Actions\Companies\MergeCompanies;
 use App\Actions\Companies\ParseCompanyCsv;
 use App\Enums\CompanyStatus;
 use App\Enums\InteractionKind;
 use App\Http\Requests\BulkCompanyActionRequest;
 use App\Http\Requests\IndexCompanyRequest;
+use App\Http\Requests\MergeCompanyRequest;
 use App\Http\Requests\ScheduleFollowUpRequest;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Http\Requests\UpdateCompanyRequest;
@@ -218,6 +220,50 @@ class CompanyController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * Candidate duplicates for a company: anything sharing its address, KvK
+     * number or name, which is the same signal the importer uses to flag a row
+     * rather than create it.
+     */
+    public function merge(Company $company): Response
+    {
+        $candidates = Company::query()
+            ->whereKeyNot($company->id)
+            ->where(function (Builder $query) use ($company) {
+                $query->where('name', $company->name);
+
+                if ($company->email !== null) {
+                    $query->orWhere('email', $company->email);
+                }
+
+                if ($company->kvk_number !== null) {
+                    $query->orWhere('kvk_number', $company->kvk_number);
+                }
+            })
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('companies/Merge', [
+            'company' => $company,
+            'candidates' => $candidates,
+            'fields' => MergeCompanies::FIELDS,
+        ]);
+    }
+
+    public function applyMerge(MergeCompanyRequest $request, Company $company, MergeCompanies $merge): RedirectResponse
+    {
+        $duplicate = Company::query()->findOrFail($request->integer('duplicate_id'));
+
+        $merge->handle($company, $duplicate, $request->takeFromDuplicate());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __(':name was merged in and removed.', ['name' => $duplicate->name]),
+        ]);
+
+        return to_route('companies.show', $company->id);
     }
 
     public function bulk(BulkCompanyActionRequest $request, ApplyBulkAction $apply): RedirectResponse

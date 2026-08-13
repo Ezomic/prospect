@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Ban, FileText, Pencil, Plus, Trash2 } from '@lucide/vue';
+import {
+    ArrowLeft,
+    Ban,
+    FileText,
+    Merge,
+    Pencil,
+    Plus,
+    Trash2,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CompanyStatusBadge from '@/components/companies/CompanyStatusBadge.vue';
 import InputError from '@/components/InputError.vue';
@@ -31,6 +39,7 @@ import {
     edit,
     followUp as scheduleFollowUp,
     index,
+    merge,
     status as updateStatus,
 } from '@/routes/companies';
 import { store as storeInteraction } from '@/routes/interactions';
@@ -245,6 +254,12 @@ const removeInteraction = (id: number) => {
                     <Link :href="index()">
                         <ArrowLeft />
                         Back
+                    </Link>
+                </Button>
+                <Button variant="outline" as-child>
+                    <Link :href="merge(company.id)">
+                        <Merge />
+                        Merge
                     </Link>
                 </Button>
                 <Button as-child>

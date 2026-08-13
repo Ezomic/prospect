@@ -60,6 +60,10 @@ class ProcessIncomingMail
         $company->forceFill([
             'status' => $status,
             $stampColumn => $company->{$stampColumn} ?? now(),
+            // A company that answered or bounced does not need chasing. Sends
+            // schedule a reminder automatically, so leaving it would turn a
+            // reply into a prompt to write again.
+            'follow_up_at' => null,
         ])->save();
 
         $this->record($company, $message, $status);

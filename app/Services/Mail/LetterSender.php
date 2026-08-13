@@ -6,6 +6,7 @@ use App\Enums\CompanyStatus;
 use App\Enums\LetterStatus;
 use App\Jobs\AppendLetterToSentFolder;
 use App\Mail\OutreachMail;
+use App\Models\Company;
 use App\Models\Letter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
@@ -84,9 +85,40 @@ class LetterSender
             $letter->company->update(['status' => CompanyStatus::Sent]);
         }
 
+        $this->scheduleFollowUp($letter->company);
+
         if ($captured !== null) {
             AppendLetterToSentFolder::dispatch($this->stashRawMessage($letter, $captured->toString()));
         }
+    }
+
+    /**
+     * Sets a follow-up reminder so the pipeline does not depend on remembering
+     * to set one. Deliberately conservative about what it will not touch.
+     */
+    private function scheduleFollowUp(Company $company): void
+    {
+        $days = config('outreach.follow_up_after_days');
+
+        if (! is_int($days) || $days <= 0) {
+            return;
+        }
+
+        // A date the user set themselves is a decision; overwriting it would
+        // quietly move a reminder they chose.
+        if ($company->follow_up_at !== null) {
+            return;
+        }
+
+        // A company that asked not to be contacted, or that has already
+        // answered, must not be handed a reminder to chase it again. Sending
+        // is refused for the first anyway, but the ordering is made explicit
+        // here rather than left to depend on that.
+        if ($company->do_not_contact || $company->status === CompanyStatus::Replied) {
+            return;
+        }
+
+        $company->forceFill(['follow_up_at' => today()->addDays($days)])->save();
     }
 
     /**

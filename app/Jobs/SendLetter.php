@@ -23,9 +23,19 @@ class SendLetter implements ShouldQueue
 
     public function handle(LetterSender $sender): void
     {
-        $this->letter->load('company');
+        $letter = $this->letter->fresh();
 
-        $sender->deliver($this->letter);
+        // A scheduled send sits on the queue for hours, and the letter can be
+        // cancelled in the meantime. The delayed job cannot be unqueued, so it
+        // checks on arrival: anything no longer in Sending was cancelled,
+        // released or already delivered, and must not go out.
+        if ($letter === null || $letter->status !== LetterStatus::Sending) {
+            return;
+        }
+
+        $letter->load('company');
+
+        $sender->deliver($letter);
     }
 
     /**
@@ -44,6 +54,7 @@ class SendLetter implements ShouldQueue
         $letter->forceFill([
             'status' => LetterStatus::Ready,
             'queued_at' => null,
+            'scheduled_for' => null,
             'send_error' => $exception?->getMessage() ?? 'The letter could not be sent.',
         ])->save();
     }

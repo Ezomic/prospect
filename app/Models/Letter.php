@@ -23,12 +23,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $send_error
  * @property Carbon|null $generated_at
  * @property Carbon|null $queued_at
+ * @property Carbon|null $scheduled_for
  * @property Carbon|null $sent_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Company $company
  */
-#[Fillable(['type', 'subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'sent_at', 'send_error'])]
+#[Fillable(['type', 'subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'scheduled_for', 'sent_at', 'send_error'])]
 class Letter extends Model
 {
     /** @use HasFactory<LetterFactory> */
@@ -44,6 +45,7 @@ class Letter extends Model
             'status' => LetterStatus::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',
+            'scheduled_for' => 'datetime',
             'sent_at' => 'datetime',
         ];
     }

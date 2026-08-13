@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('companies/{company}/letters', [LetterController::class, 'store'])->name('letters.store');
     Route::post('letters/{letter}/send', [LetterController::class, 'send'])->name('letters.send');
+    Route::post('letters/{letter}/cancel', [LetterController::class, 'cancel'])->name('letters.cancel');
     Route::post('letters/{letter}/release', [LetterController::class, 'release'])->name('letters.release');
     Route::get('letters/{letter}/pdf', [LetterController::class, 'pdf'])->name('letters.pdf');
     Route::resource('letters', LetterController::class)->only(['edit', 'update', 'destroy']);

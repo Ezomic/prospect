@@ -7,6 +7,7 @@ import type { CompanyStatusOption } from '@/types';
 
 defineProps<{
     statuses: CompanyStatusOption[];
+    languages: { value: string; label: string }[];
 }>();
 
 defineOptions({
@@ -35,7 +36,7 @@ defineOptions({
         />
 
         <div class="max-w-3xl">
-            <CompanyForm :statuses="statuses" />
+            <CompanyForm :statuses="statuses" :languages="languages" />
         </div>
     </div>
 </template>

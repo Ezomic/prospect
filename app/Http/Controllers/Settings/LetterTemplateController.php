@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Letters\GenerateLetter;
+use App\Enums\LetterLanguage;
 use App\Enums\LetterType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateLetterTemplateRequest;
@@ -18,9 +19,15 @@ class LetterTemplateController extends Controller
     public function edit(Request $request): Response
     {
         $type = LetterType::tryFrom($request->string('type')->toString()) ?? LetterType::OpenAanbod;
+        $language = LetterLanguage::tryFrom($request->string('language')->toString()) ?? LetterLanguage::Dutch;
 
         return Inertia::render('settings/LetterTemplate', [
             'type' => $type->value,
+            'language' => $language->value,
+            'languages' => array_map(
+                fn (LetterLanguage $case) => ['value' => $case->value, 'label' => $case->label()],
+                LetterLanguage::cases(),
+            ),
             'types' => array_map(
                 fn (LetterType $case) => [
                     'value' => $case->value,
@@ -29,17 +36,18 @@ class LetterTemplateController extends Controller
                 ],
                 LetterType::cases(),
             ),
-            'template' => LetterTemplate::current($type)->only(['subject', 'body', 'email_subject', 'email_body']),
-            'defaults' => LetterTemplate::defaultsFor($type),
-            'sample' => GenerateLetter::placeholders($this->sampleCompany()),
+            'template' => LetterTemplate::current($type, $language)->only(['subject', 'body', 'email_subject', 'email_body']),
+            'defaults' => LetterTemplate::defaultsFor($type, $language),
+            'sample' => GenerateLetter::placeholders($this->sampleCompany($language)),
         ]);
     }
 
     public function update(UpdateLetterTemplateRequest $request): RedirectResponse
     {
         $type = $request->letterType();
+        $language = $request->letterLanguage();
 
-        LetterTemplate::current($type)->update([
+        LetterTemplate::current($type, $language)->update([
             'subject' => $request->string('subject')->toString(),
             'body' => $request->string('body')->toString(),
             'email_subject' => $request->string('email_subject')->toString(),
@@ -48,7 +56,7 @@ class LetterTemplateController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Template saved.')]);
 
-        return to_route('letter-template.edit', ['type' => $type->value]);
+        return to_route('letter-template.edit', ['type' => $type->value, 'language' => $language->value]);
     }
 
     /**
@@ -57,13 +65,14 @@ class LetterTemplateController extends Controller
      * out blank here, since an unsaved company has no letters, which is the
      * same thing a real follow-up shows before anything has been sent.
      */
-    private function sampleCompany(): Company
+    private function sampleCompany(LetterLanguage $language): Company
     {
         return new Company([
             'name' => 'Acme BV',
             'contact_name' => 'Jane Doe',
             'city' => 'Enschede',
             'industry' => 'softwareontwikkeling',
+            'language' => $language,
         ]);
     }
 }

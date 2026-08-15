@@ -21,6 +21,8 @@ type Template = {
 const props = defineProps<{
     type: string;
     types: { value: string; label: string; description: string }[];
+    language: string;
+    languages: { value: string; label: string }[];
     template: Template;
     defaults: Template;
     sample: Record<string, string>;
@@ -37,13 +39,24 @@ defineOptions({
     },
 });
 
-const form = useForm({ ...props.template, type: props.type });
+const form = useForm({
+    ...props.template,
+    type: props.type,
+    language: props.language,
+});
 
 // The form is seeded from the template that was loaded, so switching type is a
 // fresh page visit rather than swapping the fields underneath unsaved edits.
 watch(
     () => props.template,
-    (template) => form.defaults({ ...template, type: props.type }).reset(),
+    (template) =>
+        form
+            .defaults({
+                ...template,
+                type: props.type,
+                language: props.language,
+            })
+            .reset(),
 );
 
 const submit = () => {
@@ -104,7 +117,7 @@ const preview = computed(() => ({
         <Heading
             variant="small"
             title="Letter template"
-            description="The open-aanbod letter and cover email every draft starts from. Each letter stays fully editable before it is sent."
+            description="The letter and cover email every draft starts from, per type and per language. A company is written to in the language set on its record."
         />
 
         <div class="flex flex-wrap gap-2">
@@ -115,7 +128,31 @@ const preview = computed(() => ({
                 size="sm"
                 as-child
             >
-                <Link :href="edit({ query: { type: option.value } })">
+                <Link
+                    :href="
+                        edit({
+                            query: { type: option.value, language: language },
+                        })
+                    "
+                >
+                    {{ option.label }}
+                </Link>
+            </Button>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <Button
+                v-for="option in languages"
+                :key="option.value"
+                :variant="option.value === language ? 'secondary' : 'ghost'"
+                size="sm"
+                as-child
+            >
+                <Link
+                    :href="
+                        edit({ query: { type: type, language: option.value } })
+                    "
+                >
                     {{ option.label }}
                 </Link>
             </Button>

@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Enums\CompanyStatus;
+use App\Enums\LetterLanguage;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +29,7 @@ trait CompanyValidationRules
             'linkedin_url' => ['nullable', 'string', 'url', 'max:255'],
             'lead_score' => ['nullable', 'integer', 'min:0', 'max:10'],
             'first_contact_channel' => ['nullable', 'string', 'max:255'],
+            'language' => ['nullable', Rule::enum(LetterLanguage::class)],
         ];
     }
 }

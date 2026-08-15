@@ -18,6 +18,7 @@ import type { Company, CompanyStatus, CompanyStatusOption } from '@/types';
 const props = defineProps<{
     company?: Company;
     statuses: CompanyStatusOption[];
+    languages: { value: string; label: string }[];
 }>();
 
 const form = useForm({
@@ -37,6 +38,7 @@ const form = useForm({
     // shadcn Input models string | number and is not ours to widen.
     lead_score: props.company?.lead_score?.toString() ?? '',
     first_contact_channel: props.company?.first_contact_channel ?? '',
+    language: props.company?.language ?? 'nl',
 });
 
 const submit = () => {
@@ -116,6 +118,25 @@ const submit = () => {
                     placeholder="Software"
                 />
                 <InputError :message="form.errors.industry" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="language">Letter language</Label>
+                <Select v-model="form.language">
+                    <SelectTrigger id="language" class="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in languages"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <InputError :message="form.errors.language" />
             </div>
 
             <div class="grid gap-2">

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Letters;
 
+use App\Enums\LetterLanguage;
 use App\Enums\LetterStatus;
 use App\Enums\LetterType;
 use App\Models\Company;
@@ -15,11 +16,12 @@ class GenerateLetter
 {
     public function handle(Company $company, LetterType $type = LetterType::OpenAanbod): Letter
     {
-        $template = LetterTemplate::current($type);
+        $template = LetterTemplate::current($type, $company->language);
         $values = self::placeholders($company);
 
         return $company->letters()->create([
             'type' => $type,
+            'language' => $company->language,
             'subject' => self::render($template->subject, $values),
             'body' => self::render($template->body, $values),
             'email_subject' => self::render($template->email_subject, $values),
@@ -75,28 +77,58 @@ class GenerateLetter
             return '';
         }
 
+        // Written in the letter's own language: a German follow-up citing a
+        // Dutch month name reads as a mail merge that went wrong.
         // locale() is documented as returning either the instance or the
         // current locale string, so the result is narrowed rather than assumed.
-        $dutch = Date::parse($sentAt)->locale('nl');
+        $localised = Date::parse($sentAt)->locale($company->language->locale());
 
-        return $dutch instanceof CarbonInterface ? $dutch->isoFormat('D MMMM YYYY') : '';
+        return $localised instanceof CarbonInterface
+            ? $localised->isoFormat($company->language->dateFormat())
+            : '';
     }
 
+    /**
+     * German has no clean equivalent of "Beste <voornaam>": "Sehr geehrter
+     * Herr" needs a gender the CRM does not hold, so the neutral "Guten Tag"
+     * is used with a name and the formal salutation without one.
+     */
     private static function greeting(Company $company): string
     {
-        return $company->contact_name !== null
-            ? "Beste {$company->contact_name}"
-            : 'Geachte heer, mevrouw';
+        $contact = $company->contact_name;
+
+        return match ($company->language) {
+            LetterLanguage::German => $contact !== null
+                ? "Guten Tag {$contact}"
+                : 'Sehr geehrte Damen und Herren',
+            LetterLanguage::English => $contact !== null
+                ? "Dear {$contact}"
+                : 'Dear Sir or Madam',
+            LetterLanguage::Dutch => $contact !== null
+                ? "Beste {$contact}"
+                : 'Geachte heer, mevrouw',
+        };
     }
 
     private static function opening(Company $company): string
     {
-        $opening = $company->city !== null
-            ? "{$company->name} in {$company->city} viel mij op"
-            : "{$company->name} viel mij op";
+        $name = $company->name;
+        $city = $company->city;
+        $industry = $company->industry;
 
-        return $opening.($company->industry !== null
-            ? " binnen de {$company->industry}."
-            : '.');
+        return match ($company->language) {
+            LetterLanguage::German => ($city !== null
+                ? "{$name} in {$city} ist mir aufgefallen"
+                : "{$name} ist mir aufgefallen")
+                .($industry !== null ? " im Bereich {$industry}." : '.'),
+            LetterLanguage::English => ($city !== null
+                ? "{$name} in {$city} caught my eye"
+                : "{$name} caught my eye")
+                .($industry !== null ? " within {$industry}." : '.'),
+            LetterLanguage::Dutch => ($city !== null
+                ? "{$name} in {$city} viel mij op"
+                : "{$name} viel mij op")
+                .($industry !== null ? " binnen de {$industry}." : '.'),
+        };
     }
 }

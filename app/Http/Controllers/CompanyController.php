@@ -8,6 +8,7 @@ use App\Actions\Companies\MergeCompanies;
 use App\Actions\Companies\ParseCompanyCsv;
 use App\Enums\CompanyStatus;
 use App\Enums\InteractionKind;
+use App\Enums\LetterLanguage;
 use App\Http\Requests\BulkCompanyActionRequest;
 use App\Http\Requests\IndexCompanyRequest;
 use App\Http\Requests\MergeCompanyRequest;
@@ -133,6 +134,7 @@ class CompanyController extends Controller
     {
         return Inertia::render('companies/Create', [
             'statuses' => $this->statusOptions(),
+            'languages' => $this->languageOptions(),
         ]);
     }
 
@@ -150,6 +152,7 @@ class CompanyController extends Controller
         return Inertia::render('companies/Edit', [
             'company' => $company,
             'statuses' => $this->statusOptions(),
+            'languages' => $this->languageOptions(),
         ]);
     }
 
@@ -296,6 +299,17 @@ class CompanyController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Company deleted.')]);
 
         return to_route('companies.index');
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function languageOptions(): array
+    {
+        return array_map(
+            fn (LetterLanguage $language) => ['value' => $language->value, 'label' => $language->label()],
+            LetterLanguage::cases(),
+        );
     }
 
     /**

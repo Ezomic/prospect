@@ -39,11 +39,12 @@ it('saves an edited template', function () {
         'body' => 'Body voor {{ company }}',
         'email_subject' => 'Mail onderwerp',
         'email_body' => 'Mail body',
-    ])->assertRedirect(route('letter-template.edit', ['type' => 'open_aanbod']));
+    ])->assertRedirect(route('letter-template.edit', ['type' => 'open_aanbod', 'language' => 'nl']));
 
     expect(LetterTemplate::current()->subject)->toBe('Nieuw onderwerp voor {{ company }}')
-        // One row per letter type since PROS-47, not one row overall.
-        ->and(LetterTemplate::count())->toBe(2);
+        // One row per (type, language) since PROS-55: two types across three
+        // languages, not one row overall.
+        ->and(LetterTemplate::count())->toBe(6);
 });
 
 it('rejects an empty template', function () {

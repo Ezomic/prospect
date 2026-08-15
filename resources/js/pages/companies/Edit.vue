@@ -8,6 +8,7 @@ import type { Company, CompanyStatusOption } from '@/types';
 defineProps<{
     company: Company;
     statuses: CompanyStatusOption[];
+    languages: { value: string; label: string }[];
 }>();
 
 defineOptions({
@@ -33,7 +34,11 @@ defineOptions({
         <Heading title="Edit company" :description="company.name" />
 
         <div class="max-w-3xl">
-            <CompanyForm :company="company" :statuses="statuses" />
+            <CompanyForm
+                :company="company"
+                :statuses="statuses"
+                :languages="languages"
+            />
         </div>
     </div>
 </template>

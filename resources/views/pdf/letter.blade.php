@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="{{ $letter->language->value }}">
 <head>
     <meta charset="utf-8">
     <style>
@@ -36,7 +36,7 @@
             {{ $letter->company->name }}@if ($letter->company->contact_name)<br>T.a.v. {{ $letter->company->contact_name }}@endif
             @if ($letter->company->city)<br>{{ $letter->company->city }}@endif
         </div>
-        <div class="date">{{ ($letter->generated_at ?? now())->locale('nl')->isoFormat('D MMMM YYYY') }}</div>
+        <div class="date">{{ ($letter->generated_at ?? now())->locale($letter->language->locale())->isoFormat($letter->language->dateFormat()) }}</div>
     </div>
 
     <div class="subject">{{ $letter->subject }}</div>

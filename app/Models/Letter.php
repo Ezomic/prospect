@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LetterLanguage;
 use App\Enums\LetterStatus;
 use App\Enums\LetterType;
 use Database\Factories\LetterFactory;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $email_subject
  * @property string|null $email_body
  * @property LetterType $type
+ * @property LetterLanguage $language
  * @property LetterStatus $status
  * @property string|null $send_error
  * @property Carbon|null $generated_at
@@ -29,11 +31,22 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Company $company
  */
-#[Fillable(['type', 'subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'scheduled_for', 'sent_at', 'send_error'])]
+#[Fillable(['type', 'language', 'subject', 'body', 'email_subject', 'email_body', 'status', 'generated_at', 'queued_at', 'scheduled_for', 'sent_at', 'send_error'])]
 class Letter extends Model
 {
     /** @use HasFactory<LetterFactory> */
     use HasFactory;
+
+    /**
+     * Mirrors the column defaults, so a letter built in memory renders the same
+     * as one read back from the database.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'type' => 'open_aanbod',
+        'language' => 'nl',
+    ];
 
     /**
      * @return array<string, string>
@@ -42,6 +55,7 @@ class Letter extends Model
     {
         return [
             'type' => LetterType::class,
+            'language' => LetterLanguage::class,
             'status' => LetterStatus::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',

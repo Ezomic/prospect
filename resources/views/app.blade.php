@@ -19,22 +19,34 @@
             })();
         </script>
 
-        {{-- Inline style to set the HTML background color based on our theme in app.css --}}
+        {{-- Paints the page before the stylesheet lands, so these must stay equal to
+             --background in resources/css/app.css. They were the template's neutral
+             white and near-black long after the tokens stopped being neutral, which
+             flashed the wrong colour on every load. --}}
         <style>
             html {
-                background-color: oklch(1 0 0);
+                background-color: #f4f5f8;
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: #131518;
             }
         </style>
+
+        <meta name="description" content="Freelance outreach, end to end: the companies worth approaching, the letter and cover email written for each one, and what came back.">
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="Prospect">
+        <meta property="og:title" content="Prospect">
+        <meta property="og:description" content="The companies worth approaching, the letters written for each one, and what came back.">
+        <meta name="twitter:card" content="summary">
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="manifest" href="/manifest.json">
-        <meta name="theme-color" content="#FF2D20">
+        {{-- Was #FF2D20, Laravel's red, against this app's own blue icon. --}}
+        <meta name="theme-color" content="#2563eb">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-title" content="Prospect">
